@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hollowband Receiver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=IM+Fell+English+SC&family=Megrim&family=PT+Sans+Narrow:wght@700&family=Saira+Extra+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: a strip of night sky over one receiver faceplate. Lit dial, paper tape of what is heard, keys, logbook.
+     Single theme by choice. Every colour below is a starting value: the set drifts into other sets while you use it. */
+  --chassis:rgb(39,49,46);
+  --chassis-hi:rgb(53,66,61);
+  --chassis-lo:rgb(26,34,32);
+  --engrave:rgb(183,195,186);
+  --maker:rgb(223,231,223);
+  --key1:rgb(65,79,73);
+  --key2:rgb(45,56,52);
+  --lamp:rgb(255,182,72);
+  --needle:rgb(217,68,44);
+  --paper:rgb(236,229,211);
+  --paper-ink:rgb(42,37,29);
+  --his-ink:#7a1f14;
+  --ghost-ink:#5d6878;
+  --r-key:6px;
+  --ls:.1em;
+  --fs:1;
+  --moonlight:1;
+  --font-label:"Saira Extra Condensed","Arial Narrow",sans-serif;
+  --font-tape:"Courier Prime","Courier New",monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:#05070c;color:var(--engrave);font-family:var(--font-label);display:flex;justify-content:center;overflow-x:hidden}
+.radio{width:100%;min-width:0;max-width:520px;height:100%;min-height:660px;display:flex;flex-direction:column;overflow:hidden}
+.sky{display:block;width:100%;height:66px;flex:none}
+.face{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:9px;padding:20px 18px 14px;
+  background:linear-gradient(180deg,var(--chassis-hi),var(--chassis) 16%,var(--chassis) 84%,var(--chassis-lo));
+  border-top:1px solid rgba(255,255,255,.14)}
+.face::before{content:"";position:absolute;inset:0 0 auto 0;height:90px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(196,214,255,.2),rgba(196,214,255,0));opacity:var(--moonlight);transition:opacity 6s}
+.screw{position:absolute;width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#d5dbd6,#737d79 58%,#39423f);box-shadow:0 1px 1px rgba(0,0,0,.6);
+  rotate:var(--a,24deg);transition:rotate .8s cubic-bezier(.3,1.5,.5,1)}
+.screw::after{content:"";position:absolute;left:1.5px;right:1.5px;top:5.5px;height:2px;border-radius:1px;background:#161b19}
+.screw::before{content:"";position:absolute;right:1px;top:4.5px;width:4px;height:4px;border-radius:50%;background:#0c0f0e;z-index:1}
+.s1{left:5px;top:5px}.s2{right:5px;top:5px}.s3{left:5px;bottom:5px}.s4{right:5px;bottom:5px}
+.dead .screw{box-shadow:0 0 6px rgba(160,190,255,.55)}
+
+.plate{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;flex-direction:column;line-height:1;min-width:0;overflow:hidden}
+.maker{font-size:calc(28px*var(--fs));font-weight:700;letter-spacing:calc(var(--ls)*1.2);color:var(--maker);white-space:nowrap}
+.model{font-size:calc(15px*var(--fs));font-weight:500;letter-spacing:var(--ls);text-transform:uppercase;opacity:.75;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+button{font-family:inherit;color:var(--engrave);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.key{position:relative;font-size:calc(17px*var(--fs));font-weight:600;letter-spacing:var(--ls);text-transform:uppercase;
+  background:linear-gradient(180deg,var(--key1),var(--key2));border:1px solid var(--chassis-lo);border-radius:var(--r-key);
+  padding:9px 6px;min-height:44px;min-width:0;overflow:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 3px 0 rgba(0,0,0,.4);
+  translate:var(--lx,0px) calc(var(--ly,0px) + var(--press,0px));
+  transition:translate .32s cubic-bezier(.3,1.9,.5,1),scale .4s cubic-bezier(.3,1.5,.5,1),filter .16s,box-shadow .12s;
+  animation:breathe 5.6s ease-in-out infinite;animation-delay:var(--bd,0s)}
+@keyframes breathe{50%{scale:1.02}}
+.key .cap{display:inline-flex;align-items:center;justify-content:center;gap:4px;pointer-events:none;white-space:nowrap}
+.key.down,.key.ghostdown{--press:3px;filter:brightness(.8);box-shadow:inset 0 2px 5px rgba(0,0,0,.55),0 0 0 rgba(0,0,0,0);transition-duration:.05s,.4s,.05s,.05s}
+.key.eaten{--press:4px;scale:1 .78;filter:brightness(.5);animation:none;box-shadow:inset 0 6px 9px rgba(0,0,0,.8)}
+.key:disabled{opacity:.4;cursor:default}
+.key[hidden]{display:none}
+button:focus-visible,canvas:focus-visible,input:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+.power{flex:none;padding:9px 12px}
+.lampdot{width:11px;height:11px;border-radius:50%;background:#3b3128;box-shadow:inset 0 0 0 1px rgba(0,0,0,.5);flex:none}
+.lampdot.lit{background:var(--lamp);box-shadow:0 0 10px 2px var(--lamp)}
+
+.dialwrap{border-radius:8px;padding:6px;background:var(--chassis-lo);box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+#dial{display:block;width:100%;height:112px;border-radius:4px;touch-action:none;cursor:ew-resize}
+.readrow{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.readout{font-size:calc(40px*var(--fs));font-weight:700;letter-spacing:.04em;color:var(--maker);line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.readout small{font-size:calc(18px*var(--fs));font-weight:500;letter-spacing:var(--ls);opacity:.7;margin-left:6px}
+.sig{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.sig .lbl{font-size:calc(14px*var(--fs));letter-spacing:calc(var(--ls)*1.5);text-transform:uppercase;opacity:.7}
+.meter{display:flex;gap:3px}
+.meter i{width:13px;height:16px;border-radius:2px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.meter i.lit{background:var(--lamp);box-shadow:0 0 6px var(--lamp)}
+.meter i.lit:nth-child(n+8){background:var(--needle);box-shadow:0 0 6px var(--needle)}
+.dead .meter i.lit{background:#a9c0ee;box-shadow:0 0 7px rgba(170,195,255,.7)}
+.status{font-size:calc(18px*var(--fs));font-weight:500;letter-spacing:var(--ls);text-transform:uppercase;min-height:22px}
+.status b{color:var(--lamp);font-weight:600}
+.dead .status b{color:#a9c0ee}
+
+.tape{flex:1;min-height:150px;overflow-y:auto;background:var(--paper);color:var(--paper-ink);font-family:var(--font-tape);font-size:15.5px;line-height:1.45;
+  border-radius:4px;padding:14px 14px 18px;transition:filter 2.5s;
+  box-shadow:inset 0 10px 12px -8px rgba(0,0,0,.45),inset 0 -10px 12px -8px rgba(0,0,0,.35)}
+.dead .tape{filter:brightness(.7) saturate(.55)}
+.tape p{margin:0 0 9px;overflow-wrap:anywhere}
+.tape .hdr{font-family:var(--font-label);font-size:calc(19px*var(--fs));font-weight:700;letter-spacing:var(--ls);text-transform:uppercase;border-top:2px solid currentColor;padding-top:7px;margin-top:14px}
+.tape .hdr:first-child{margin-top:0}
+.tape .cue{font-style:italic;opacity:.62;font-size:14px}
+.tape .note{font-weight:700}
+.tape .ghost{color:var(--ghost-ink);font-style:italic}
+.tape .his{color:var(--his-ink)}
+.tape .anom{font-weight:700;text-transform:uppercase;position:relative;top:-1.5px}
+.tape ol{margin:0 0 9px;padding-left:22px}
+.tape li{margin-bottom:5px}
+
+.keys{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:8px}
+.keys .key{padding:9px 3px;font-size:calc(16px*var(--fs));letter-spacing:calc(var(--ls)*.5)}
+.keys2{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.keys2 .key{flex:1 1 auto;padding:9px 12px}
+.vol{display:flex;align-items:center;gap:8px;flex:1 1 150px;font-size:calc(15px*var(--fs));letter-spacing:calc(var(--ls)*1.4);text-transform:uppercase}
+.vol input{flex:1;min-width:80px;accent-color:var(--lamp)}
+.log h2{margin:0 0 6px;font-size:calc(16px*var(--fs));font-weight:600;letter-spacing:calc(var(--ls)*1.5);text-transform:uppercase;display:flex;justify-content:space-between;gap:10px}
+.log h2 span:last-child{opacity:.7;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;min-height:34px;max-height:78px;overflow-y:auto}
+.chips .key{font-size:calc(15px*var(--fs));padding:5px 9px;min-height:34px;max-width:100%;text-align:left;animation:none}
+.chips .key .cap{white-space:normal}
+.chips .ghostchip{color:#a9c0ee;font-style:italic}
+.chips .hischip{color:#ff9d8c;border-color:#7a1f14}
+.chips em{font-style:normal;font-size:calc(15px*var(--fs));letter-spacing:var(--ls);opacity:.55;align-self:center}
+.reset{background:none;border:0;padding:6px 0 0;font-size:calc(13px*var(--fs));letter-spacing:calc(var(--ls)*1.4);text-transform:uppercase;opacity:.5;text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.key{animation:none;transition:none}.screw{transition:none}}
+</style>
+</head>
+<body>
+<main class="radio" id="radio">
+  <canvas class="sky" id="sky" aria-hidden="true"></canvas>
+  <div class="face" id="face">
+    <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
+
+    <header class="plate">
+      <div class="brand"><span class="maker" data-l="brand">HOLLOWBAND</span><span class="model" data-l="model">Shortwave receiver, model 9</span></div>
+      <button id="power" class="key power" aria-pressed="false" aria-label="Power"><span class="cap"><i class="lampdot" id="powerlamp"></i><span data-l="power">Power</span></span></button>
+    </header>
+
+    <div class="dialwrap">
+      <canvas id="dial" tabindex="0" role="slider" aria-label="Tuning dial, kilohertz" aria-valuemin="3000" aria-valuemax="17000" aria-valuenow="6000"></canvas>
+    </div>
+
+    <div class="readrow">
+      <div class="readout"><span id="freq">6,000</span><small data-l="khz">kHz</small></div>
+      <div class="sig"><span class="lbl" data-l="signal">Signal</span><div class="meter" id="meter"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    </div>
+    <div class="status" id="status">Receiver off</div>
+
+    <section class="tape" id="tape" aria-live="polite">
+      <p class="hdr">Operating notes</p>
+      <ol>
+        <li>Press Power. Sound starts then.</li>
+        <li>Drag the dial sideways. It has weight, and it plays as it turns.</li>
+        <li>Listen for the whistle and watch the signal lamps. Stations keep to the marked metre bands, mostly.</li>
+        <li>Whatever is spoken prints here, so the set works with the sound off.</li>
+        <li>Ten stations are on the air tonight. One would rather not be found.</li>
+      </ol>
+    </section>
+
+    <div class="keys">
+      <button class="key" id="seekdn" aria-label="Seek down to the next station"><span class="cap"><span>&#9664;&#9664;</span><span data-l="seek">Seek</span></span></button>
+      <button class="key" id="finedn" aria-label="Tune down one kilohertz"><span class="cap">&minus; 1</span></button>
+      <button class="key" id="fineup" aria-label="Tune up one kilohertz"><span class="cap">+ 1</span></button>
+      <button class="key" id="seekup" aria-label="Seek up to the next station"><span class="cap"><span data-l="seek">Seek</span><span>&#9654;&#9654;</span></span></button>
+    </div>
+    <div class="keys2">
+      <button class="key" id="voice" aria-pressed="true" aria-label="Spoken voice" hidden><span class="cap"><i class="lampdot lit" id="voicelamp"></i><span data-l="voice">Voice</span></span></button>
+      <button class="key" id="fresh" aria-label="Ask for a new transmission" hidden disabled><span class="cap"><span data-l="fresh">New transmission</span></span></button>
+      <label class="vol" for="volume"><span data-l="vol">Vol</span><input id="volume" type="range" min="0" max="100" value="70"></label>
+    </div>
+
+    <section class="log">
+      <h2><span data-l="logbook">Logbook</span><span id="count">0 of 10</span></h2>
+      <div class="chips" id="chips"><em>Nothing logged yet.</em></div>
+      <button class="reset" id="reset">Start the night over</button>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+"use strict";
+/* ================= helpers ================= */
+const FMIN=3000, FMAX=17000, PPK=0.5;
+const BANDS=[["90 m",3200,3400],["75 m",3900,4000],["60 m",4750,5060],["49 m",5900,6200],["41 m",7200,7450],["31 m",9400,9900],["25 m",11600,12100],["22 m",13570,13870],["19 m",15100,15800]];
+const $=id=>document.getElementById(id);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const fmt=n=>Math.round(n).toLocaleString("en-US");
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(_){}};
+const reduced=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+const HOURS=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"];
+function approxTime(){
+  const d=new Date(), m=d.getMinutes(), h=d.getHours(), H=x=>HOURS[((x%12)+12)%12];
+  if(m<8) return "just gone "+H(h);
+  if(m<23) return "quarter past "+H(h);
+  if(m<38) return "half past "+H(h);
+  if(m<53) return "quarter to "+H(h+1);
+  return "nearly "+H(h+1);
+}
+const weekday=()=>["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
+const clock=()=>{const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");};
+function moonPhase(){const days=(Date.now()-Date.UTC(2000,0,6,18,14))/86400000;return ((days/29.530588853)%1+1)%1;}
+function moonName(){
+  const p=moonPhase();
+  if(p<0.03||p>0.97) return "new moon";
+  if(p<0.22) return "waxing crescent"; if(p<0.28) return "first quarter"; if(p<0.47) return "waxing gibbous";
+  if(p<0.53) return "full moon"; if(p<0.72) return "waning gibbous"; if(p<0.78) return "last quarter";
+  return "waning crescent";
+}
+
+/* ================= state ================= */
+const S={phase:0,letIn:false,returned:false,youAt:"",listenMs:0,moonMs:0,moonSegs:0,pendingMoon:false,everOn:false,noteDone:false};
+const stats={taps:0,volChanges:0,powerCycles:0,prevName:null,dwell:{},visits:0};
+let found=new Set();
+let freq=6000, power=false, currentSt=null, pendingSt=null, lockTimer=0, session=0, anim=0, drifting=false;
+let voiceOn=true, ttsCap=null, sampleCap=null, synthDead=!("speechSynthesis" in window), cur={st:null,d:1e9,s:0};
+let lastTouch=performance.now(), moonA=1, moonTarget=1, lastDet=600, lastPluck=0, harm=0;
+const KEY="hollowband-night";
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify({found:[...found],phase:S.phase,letIn:S.letIn,returned:S.returned,youAt:S.youAt,listenMs:S.listenMs,moonMs:S.moonMs,moonSegs:S.moonSegs,noteDone:S.noteDone}));}catch(_){}
+}
+
+/* ================= stations ================= */
+const LIVING=[
+ {f:3305,name:"Marrow Sound Coastal Service",voice:"rounded",rate:0.9,pitch:0.8,bed:"coastal",
+  brief:"A solemn inshore waters forecast for an invented coastline (Gannet Shoals, The Sisters, Cape Regret, Old Kettle Deep, Greywife Flats, Lantern Rock). Sea areas followed by wind, weather and visibility, which drift into the absurd.",
+  segs:[[
+   "This is the Marrow Sound Coastal Service, with the forecast for inshore waters until further notice.",
+   "Gannet Shoals. Southwest five, backing reluctant. Rain at times. Visibility good, becoming philosophical.",
+   "The Sisters. Variable three, mainly in the afternoons. Sea state smooth, or pretending to be.",
+   "Cape Regret. Northerly six. Fog banks, well rehearsed. Mariners are advised to lower their expectations.",
+   "Old Kettle Deep. Calm. Suspiciously calm. We have sent someone to check.",
+   "Greywife Flats. Wind none. Tide out, and not saying when it will be back.",
+   "That concludes the forecast. The outlook for tomorrow is tomorrow."
+  ],[
+   "Marrow Sound Coastal Service. Gale warnings follow.",
+   "A gale warning is in force for Cape Regret. The gale has been warned and has chosen to continue.",
+   "Gannet Shoals. Westerly four, increasing five if provoked. Showers, mostly on Kevin.",
+   "Lantern Rock. The light is working. The rock has been reported missing. Navigate by feel.",
+   "The Sisters. Swell moderate. One of the Sisters is not speaking to the other. Pass between them quietly.",
+   "Small craft advisory. Small craft are advised that they are small.",
+   "Next bulletin at six, or when the kettle has boiled, whichever is later."
+  ]],
+  moon:[
+   ()=>moonName()==="new moon"?"Marrow Sound Coastal Service. The moon was due tonight as a new moon, which nobody would have seen. It is now not there in a different way.":"Marrow Sound Coastal Service. The moon was due tonight as a "+moonName()+". It did not attend.",
+   "All areas. Tides, none. The sea is where it was left.",
+   "Gannet Shoals. Southwest four. Night, darker than issued. Mariners should not look up. There is nothing to be gained.",
+   "Greywife Flats. The tide that went out has now been formally listed as missing.",
+   "Lantern Rock. The light is working. We are grateful for the light. We did not know how much we would be.",
+   "No other change. That is what we find troubling."
+  ],
+  wrong:[
+   "Marrow Sound Coastal Service. The forecaster is not the forecaster. He has the same cardigan.",
+   "Gannet Shoals. Win{d} n{o}rtherly, five. Visibility, someone is looking back.",
+   "Cape Regret. Calm. Liste{n}ing.",
+   "The Sis{t}ers. There are now three. The new one is very like the others. A little {t}oo like.",
+   "{A} note for the listener. That is not the set you switched on. We thought you should know.",
+   "Lantern Rock. Kee{p} the light on."
+  ],
+  back:"All areas. High water at four minutes past. It is good to say so."},
+ {f:4890,name:"The Clerk",voice:"glassy",rate:0.85,pitch:1.1,bed:"musicbox",
+  brief:"A numbers station. A weary clerk reads five-digit groups one digit at a time for unnamed agents and keeps slipping in small personal grievances and asides.",
+  segs:[[
+   "Attention. Attention. Message for four one seven. Message for four one seven.",
+   "Three. Nine. Zero. Zero. Six.",
+   "Eight. Eight. One. Two. Five.",
+   "Four. Seven. Seven. Three. Nought. I prefer nought. They told me to say zero.",
+   "Six. One. Nine. Nine. Two.",
+   "I have read these numbers every night for thirty-one years. Nobody has ever said thank you. Seven.",
+   "Two. Two. Five. Zero. Eight.",
+   "End of message. Repeat, end of message. That part I always enjoy."
+  ],[
+   "Attention. Message for two two nine.",
+   "Five. Five. Four. One. Three.",
+   "Nine. Zero. Seven. Seven. Six.",
+   "Agent two two nine, if you are listening, you left your umbrella here in March.",
+   "One. Eight. Three. Three. Four.",
+   "The next group is my sister's telephone number. Disregard it. Six. Four. Two. Zero. One.",
+   "Zero. Zero. Zero. Zero. Zero. That one is a real group. I checked twice.",
+   "End of message. Do not write back. I mean that less every year."
+  ]],
+  moon:[
+   "Attention. Message for all stations. This one I was not given. I am sending it anyway.",
+   "Zero. Zero. Zero. Zero. Zero.",
+   "That was the moon's group. It has been removed from the book. The page is still there. The group is not.",
+   "I have asked upstairs. There is no upstairs. I had always assumed.",
+   "Three. Three. One. Seven. Nine. That one is ordinary. I included it for comfort.",
+   "End of message."
+  ],
+  wrong:[
+   "Attention. Message for the listener. Not an agent. The listener. You.",
+   "Four. Fifteen. Fourteen.",
+   "Twenty. Twenty. One. Sixteen.",
+   "A is one. Count on your fingers. I will wait. Thirty-one years, I can wait.",
+   "My relief came on shift tonight. He has my face and my lunch. He reads the numbers better than I do. I am the one in the cupboard.",
+   "End of message. Burn the paper. It is your paper. It is in your hand."
+  ],
+  back:"Zero. Zero. Zero. Zero. Zero. It is back in the book. Somebody thank someone."},
+ {f:6075,name:"Up Late with Dolores Vane",voice:"buttery",rate:1.05,pitch:1.0,bed:"lounge",
+  brief:"A late-night call-in show. Unflappable host Dolores Vane takes calls from a town where small impossible things happen, and answers them with practical, unbothered advice. We only hear her side.",
+  segs:[[
+   "You're up late with Dolores Vane, the only voice between here and breakfast. Line two, you're on the air.",
+   "Caller says the moon has been parked across his driveway since Thursday. Sir, have you tried leaving a note?",
+   "He has left a note. The moon has not moved. Well, that's just rude, and I'll say so on the air. Moon, shift yourself.",
+   "Line four. A woman whose husband has been replaced by an identical husband who does the dishes. Ma'am, I don't see the problem, and I suggest you stop looking for one.",
+   "Line one, go ahead. No, that's the sound of a man eating crisps. Hello? He's hung up. He rang a radio station to eat crisps. I respect it.",
+   "Stay with me. After the break, a gentleman who has been the same age for six years and wants to know who to see about it."
+  ],[
+   "Dolores Vane, quarter past something. The lines are open and so am I, within reason.",
+   "Line three. Your staircase has one more step going up than coming down. Sweetheart, keep the extra. Steps aren't cheap.",
+   "We have a regular on line two. Hello, Mister Pruitt. Yes. Yes. No, Mister Pruitt, I still can't tell you what the owls want. I've asked.",
+   "Line five, you're on. A lady whose reflection has started arriving a little early. Is it getting anything done while it waits? Then let it.",
+   "A reminder that this programme does not give medical, legal, or tidal advice, since the incident.",
+   "Don't touch that dial. Or do. I'm a voice in the dark, not your mother."
+  ]],
+  moon:[
+   "Dolores Vane. The board is lit like a switchboard at a wedding, and you're all ringing about the same thing, so let's have it.",
+   "Line two. Yes, sir. I know your driveway is empty. Everyone's is. No, I don't think it left because of your note.",
+   "Line six says nothing else has changed. Her dog's fine, her tea's fine, the tide tables are wrong and that's all. Sweetheart, that's the part that keeps me up, and I'm paid to be up.",
+   "Line four's late husband had a wireless that only ever picked him up once it was switched off. Ma'am, then switch it off and listen. I would.",
+   "Line one wants to know who to report it to. I'd like that number myself.",
+   "Here's what we'll do. Leave a light on. Not for it. For you."
+  ],
+  wrong:[
+   "Dolores Vane. Different sort of night. I'm going to read you something that was left on my desk, in my own handwriting, which I did not write.",
+   "It says, {d}ear listener. The man {o}n the high frequency is {n}ot the man he was.",
+   "It says he will ask you for a small thing. {T}wo of a small thing. On the glass.",
+   "It says, don'{t}. And then it says my name, spelled the way my mother spelled it. Nobody here knows that.",
+   "Line three has been open all night with nobody on it. Just breathing, very even. {A}nd very patient.",
+   "Kee{p} your hands in your lap, sweetheart. I'll stay on with you."
+  ],
+  back:"Line two says it's back, and it's parked legally this time. Go to bed, all of you. Not you. You stay."},
+ {f:7335,name:"Lower Orchard Stock & Fodder Report",voice:"rounded",rate:1.1,pitch:0.9,bed:"farm",
+  brief:"A brisk rural market report for impossible produce and livestock (glass turnips, thunder wheat, baled fog, reversible sheep), read as flatly as real commodity prices. Always ends with 'Mind the gate.'",
+  segs:[[
+   "Lower Orchard Stock and Fodder Report. Prices at close of market.",
+   "Glass turnips, steady at four and six the crate. Handle with care, as ever.",
+   "Thunder wheat is up three on yesterday. Growers are reminded to harvest it from a distance.",
+   "Fog, baled, eleven a ton. Loose fog is not being accepted, after last time.",
+   "Livestock. Reversible sheep, firm. Left-handed geese, down slightly. The tall pig has been withdrawn from sale and is helping with enquiries.",
+   "Honey remains suspicious. Do not buy honey this week.",
+   "That is the report. Mind the gate."
+  ],[
+   "Stock and Fodder, the midweek bulletin.",
+   "Moon-ripened barley, six shillings the bushel. It only weighs that at night, so buyers are advised to pay in the morning.",
+   "Echo cabbages, plentiful. The second cabbage is free but arrives slightly later.",
+   "A warning to growers in the east field. The scarecrow has unionised. Its demands are reasonable. Meet them.",
+   "Eggs. Large, medium, and the other kind. Prices on request. Do not request them twice.",
+   "The prize marrow at Upper Orchard has won again, for the ninth year. No one has entered it. It simply appears.",
+   "That is the report. Mind the gate. Someone keeps not minding the gate."
+  ]],
+  moon:[
+   "Stock and Fodder. Special bulletin.",
+   "Moon-ripened barley, no price. There is no moon to ripen it. Buyers holding last week's barley are advised to keep hold of it.",
+   "Night-flowering stock, down nine. Owls, unsettled. Hens laying on time, which we report because somebody should be.",
+   "Fog, baled, up sharply. People want something to look at.",
+   "The scarecrow in the east field has turned to face upward. Nobody turned it.",
+   "That is the report. Mind the gate. Mind it properly tonight."
+  ],
+  wrong:[
+   "Stock and Fodder. The reader apologises. The figures on this sheet have changed since he picked it up.",
+   "Reversible sheep, reverse{d}. All of them. All at {o}nce.",
+   "Hens, counted twice. Te{n}, then eleven. The eleven{t}h is doing a very good impression of a hen.",
+   "The prize marrow has not appeared {t}his year. Something else is in its place. Same size. Same ribbon.",
+   "{A}ll gates in the district are to be kept shut. If something knocks, it is not stock. Stock does not knock.",
+   "That is the re{p}ort. Mind the gate."
+  ],
+  back:"Moon-ripened barley, six shillings the bushel, and never mind the weight."},
+ {f:9560,name:"Kettleball Final, live",voice:"airy",rate:1.2,pitch:1.15,bed:"crowd",
+  brief:"Breathless live commentary on Kettleball, a sport whose rules are never explained. Periods are called umbrages, scores are counted in geese, there are ladders, kettles, hums and forfeits. The commentator treats all of it as obvious.",
+  segs:[[
+   "And we're back at the Old Sump Ground for the second umbrage of this Kettleball final. Thrupp Wanderers lead by a goose and two.",
+   "Hargreave takes the kettle wide. He's looking for the ladder. He's found the ladder! Oh, but it's the wrong ladder.",
+   "That'll be a forfeit. The umpire is pointing at the sea, which is forty miles away. Harsh, but it's in the rulebook.",
+   "Wanderers bring on the substitute, and it's a wardrobe. Bold. You don't see a wardrobe at this level much any more.",
+   "Pelham with the long hum. It's a good hum. It's carrying. The crowd is on its feet, facing the wrong way, as tradition demands.",
+   "And it counts! That's a full goose for Mudlark Athletic, and we are level at the turn of the soup."
+  ],[
+   "Welcome back. Final umbrage. Nobody has scored since the weather changed sides.",
+   "Okafor steps up for the standing sulk. He's sulking beautifully. Eleven seconds. Twelve. The judges are nodding.",
+   "Oh, and there's a kettle loose in the stands! Play continues. Play always continues. That's the beauty of this game.",
+   "The referee has awarded Thursday to the Wanderers. I've never seen that given in a final.",
+   "Two minutes left on the candle. Athletic need a goose and a half, and you cannot score half a goose. People have tried.",
+   "And that's the bell, the whistle, and the gentleman with the trombone. It's all over. The winner will be announced in the spring."
+  ]],
+  moon:[
+   "And there's a delay here at the Old Sump Ground. Both sides have stopped and are looking at the sky. The umpire is looking at the sky. I'm not going to look at the sky.",
+   "For listeners at home, the floodlights are on, the pitch is fine, and the thing that is usually up there is not up there.",
+   "The rulebook does cover this. Law forty. Play continues. Play always continues.",
+   "Hargreave takes the kettle. Nobody's marking him. Nobody's cheering. He's scored. I think that's the saddest goose I've ever seen.",
+   "We'll stay with it. Somebody ought to."
+  ],
+  wrong:[
+   "We're back. I'm told this is the same final. It doesn't feel like the same final.",
+   "Hargreave's on the ball. Except that Hargreave's also on the bench, with his hea{d} in his hands. Tw{o} Hargreaves. Neither will look at the other.",
+   "The crowd has go{n}e very quie{t}. They're not watching the match. They're all facing this way. They're facing the microphone.",
+   "I don'{t} know who you are at home, but they seem to.",
+   "{A}nd the referee is holding up a card. It just says, listener. He's {p}ointing it at me. At you. Through me."
+  ],
+  back:"And the crowd are looking up again. That's a full goose for everybody."},
+ {f:10000,name:"Bureau of Approximate Time",voice:"glassy",rate:0.95,pitch:1.0,bed:"ticks",
+  brief:"An official time signal service that is only roughly sure what time it is, and is serenely unbothered about it. Announcements about tones, corrections to earlier hours, and bureaucratic notices about time.",
+  segs:[[
+   ()=>"This is the Bureau of Approximate Time. At the tone, it will be about "+approxTime()+". Ish.",
+   "~tone",
+   "That was the tone. If you missed it, another will be along. They are not rare.",
+   "The Bureau reminds listeners that the time is supplied as a courtesy and should not be used for timing things.",
+   ()=>"Today is "+weekday()+", in our opinion.",
+   "Clocks in the eastern district should be set back by one shrug.",
+   "At the next tone, it will be later than it was. This is the only guarantee the Bureau offers.",
+   "~tone"
+  ],[
+   ()=>"Bureau of Approximate Time. It is currently around "+approxTime()+", and has been for a little while.",
+   "A correction. Yesterday's four o'clock was issued in error. Listeners who used it may keep it.",
+   "Leap seconds are available this week from the front desk. One per household.",
+   "~tone",
+   "That tone was early. The Bureau regrets nothing.",
+   "To listeners asking how long a moment is. It depends who is having it.",
+   "Stand by for the tone. Not that one. The next one.",
+   "~tone"
+  ]],
+  moon:[
+   ()=>"Bureau of Approximate Time. It is about "+approxTime()+". We are less sure of the month.",
+   "The Bureau kept the months by the moon. The Bureau has mislaid the moon. Listeners should continue with the month they have until a new one can be issued.",
+   "~tone",
+   "That tone was on time. We checked it against nothing.",
+   "High water and low water are withdrawn. Water is now simply water.",
+   "Stand by."
+  ],
+  wrong:[
+   ()=>"Bureau of Approximate Time. It is "+approxTime()+". It was also "+approxTime()+" a moment ago, in a different voice.",
+   "A notice. One secon{d} has been f{o}u{n}d that belongs to no minute. It is being held at the front desk.",
+   "~tone",
+   "Tha{t} tone was not ours. Please do not se{t} anything by it.",
+   "{A} listener's clock is running correctly. This has been noted, and by more than us.",
+   "The Bureau advises you to kee{p} still for the duration of the next tone.",
+   "~tone"
+  ],
+  back:"The Bureau is pleased to reissue the month. Please return any months you made at home."},
+ {f:11820,name:"Conversational Vellish",voice:"airy",rate:0.9,pitch:1.05,bed:null,chime:true,
+  brief:"A language course for Vellish, an invented language. Each line is a short Vellish phrase followed by its oddly specific English translation. Lessons are set in mundane situations (customs, dinner, a hat shop). Geese come up a lot. Known words: orro (goose), nen (no), lom (moon), ke lom (soon, literally by the moon), hup (a knock). Ends by announcing the next lesson.",
+  segs:[[
+   "Conversational Vellish. Lesson fourteen. At the customs office. Listen, and repeat.",
+   "Orro vant ke shilu? Is this your ordinary goose?",
+   "Nen. Shilu ke vant orro meb. No. This is my formal goose.",
+   "Tavi so drellin, hup, hup. I have nothing to declare except these two smaller declarations.",
+   "Pem oska virru ta lom? At what time does the bridge become a different bridge?",
+   "Ke lom, ke lom. Brannu. Soon, soon. Sit on your luggage.",
+   "Very good. In lesson fifteen, we apologise to a magistrate."
+  ],[
+   "Conversational Vellish. Lesson twenty-two. Dining with your in-laws. Listen, and repeat.",
+   "Sella mor, ta vindu groth. Thank you, the soup is exactly as loud as I hoped.",
+   "Emmi na pruth ke davro? May I be excused to go and stand in the field?",
+   "Vo kessa tin tin. Your mother is a remarkable shape.",
+   "Careful. That last phrase is a compliment only in the northern provinces.",
+   "Orro? Orro! Hup. A goose? A goose! Well then.",
+   "Very good. In lesson twenty-three, we buy a hat under protest."
+  ]],
+  moon:[
+   "Conversational Vellish. A supplementary lesson. Words we did not think you would need.",
+   "Lom. The moon. Lom nen. No moon.",
+   "Pem oska lom? At what time is the moon?",
+   "You will recall ke lom, soon. Literally, by the moon. We will need a new word for soon.",
+   "Vo kessa lom nen, ke brannu. Your sky is missing a piece. Sit down.",
+   "There is no Vellish word for this. We have had to borrow one of yours. It is, oh.",
+   "Very good. Repeat it until morning."
+  ],
+  wrong:[
+   "Conversational Vellish. Lesson nought. For one student only. Listen. Do not repeat.",
+   "Orro nen orro. That is not a goose. It is {d}oing a go{o}se.",
+   "Vo kessa {n}en vo. Your friend is not your friend. He is the righ{t} height, but he is wearing it.",
+   "Hup, hup. Nen. Two knocks. No.",
+   "Emmi na pruth {t}a lom? M{a}y I be excused to go and stand where the moon was?",
+   "The answer is nen. Re{p}eat the answer. Nen."
+  ],
+  back:"Ke lom. Soon. We can keep the word after all."},
+ {f:13700,name:"Little Wending Parish Notices",voice:"buttery",rate:0.95,pitch:0.85,bed:"parish",
+  brief:"Parish notices for the village of Little Wending, read by a verger who would rather be at home. Lost and found, rotas, cancelled sales and postponed talks, each slightly impossible and delivered with mild reproach.",
+  segs:[[
+   "Notices for the parish of Little Wending, read by the verger, who would rather be at home.",
+   "Lost. One shadow, medium, answers to Gerald. Last seen heading the other way at noon.",
+   "The bring and buy sale is cancelled. Too much was brought. Not enough was bought. We know who you are.",
+   "Found, in the vestry, a door. Would the owner of the wall please come forward.",
+   "Choir practice moves to Wednesday. The choir was not consulted and has moved to Friday in protest.",
+   "The bell ringers thank whoever returned the bell, and ask, gently, why.",
+   "Tea will be served afterwards. It is always afterwards."
+  ],[
+   "Parish notices. Do sit down, there are several.",
+   "The flower rota. Mrs Aldous, lilies. Mr Finch, dahlias. Mrs Aldous again, because Mr Finch cannot be trusted with dahlias.",
+   "For sale. One ladder, never reached the top of. Apply to the sexton.",
+   "Would whoever is praying for rain please be more specific about where.",
+   "The lost property box has been found.",
+   "Thursday's talk, a history of the parish pump, is postponed, as the speaker has not finished the pump.",
+   "That is all. Go carefully. The path is where it was, mostly."
+  ]],
+  moon:[
+   "Parish notices. There is really only the one.",
+   "Lost. One moon, large, pale, answers to nothing. Last seen where it always was.",
+   "The harvest supper will go ahead by lamplight. Bring a lamp. Bring a spare.",
+   "The bell ringers rang for it at midnight. It did not come back. They are going to try a different bell.",
+   "The verger has been asked whether this is a sign. The verger does not know. The verger would like to go home, but it is very dark.",
+   "Tea afterwards. Please stay for tea."
+  ],
+  wrong:[
+   "Parish notices. The verger is reading these from a slip of paper that was un{d}er the do{o}r.",
+   "Found. O{n}e verger, identical. He is sitting in the vestry now. He knows all the notices. He knows nex{t} week's.",
+   "The bell rang twice in the night. Nobody rang i{t}. Would nobody please stop.",
+   "{A} reminder that the church door opens outward. If it is knocked on, it is being knocked on from inside.",
+   "No tea afterwards. Go straight home. Kee{p} your wireless company. It is doing its best."
+  ],
+  back:"Found. One moon. Would whoever returned it accept the thanks of the bell ringers, and say why."},
+ {f:15425,name:"Lagoon Shortwave",voice:"buttery",rate:0.8,pitch:0.7,bed:"lagoon",gap:14000,
+  brief:"An extremely relaxed easy-listening station. A murmuring host back-announces pieces with titles like 'Slow Elevator, part six' and promises more of the same. Two to four very short lines only, soothing and faintly ridiculous.",
+  segs:[[
+   "Mmm. You're adrift on Lagoon Shortwave, where every hour is the small one.",
+   "That was Slow Elevator, part six. Before that, parts one through five.",
+   "Coming up, forty unbroken minutes of the same chord. We think you'll know it when you hear it."
+  ],[
+   "Lagoon Shortwave. No news, no weather, no sudden movements.",
+   "That piece was called Towel on a Warm Railing. It was requested by nobody, which is how we like it.",
+   "If you're just joining us, nothing has happened, and you've missed none of it."
+  ],[
+   "This is Lagoon. Loosen something.",
+   "Tonight's sponsor is a hammock. Just the one.",
+   "And now, more of this."
+  ]],
+  moon:[
+   "Lagoon Shortwave. You may have heard there's a little less light this evening. We find it flatters the room.",
+   "That was Nocturne for an Empty Sky, parts one through nine. We wrote it this afternoon. We didn't know why.",
+   "And now, more of this. More than usual. Stay close to the set."
+  ],
+  wrong:[
+   "Lagoon. Mmm. {D}on't be alarmed. The h{o}st has bee{n} replaced by a hos{t} of the same temperature.",
+   "That was a piece called Two Sof{t} Knocks. We did not play it. It was played.",
+   "{A}nd now, less of this. Kee{p} very still. It's lovely when you're still."
+  ],
+  back:"Mmm. The light's back. We preferred it dim, but we're happy for you."},
+ {f:16661,name:"The Night Engineer",voice:"rounded",rate:1.0,pitch:0.75,bed:"hum",hidden:true,max:0.88,lock:3,listener:true,
+  brief:"A lone engineer up a transmitter mast, on a frequency he is not supposed to be using, who assumes almost nobody is listening. He chats to the valves and gossips mildly about the other stations.",
+  segs:[[
+   "Test. Test. One, two. Is this thing radiating?",
+   "If anyone can hear this, I'm not supposed to be on this frequency. I'm supposed to be fixing the antenna. I am, technically, near the antenna.",
+   "Nobody's listened to this transmitter since they put the new one in. So mostly I talk to the valves. Good evening, valves.",
+   "There's a sandwich up here from the previous engineer. I'm not going to eat it. I'm going to keep an eye on it.",
+   "Tell you what, if you found this, you've got patience or a very steady thumb. Either way. Well done.",
+   "Right. Back up the mast. Don't tell the Bureau."
+  ],[
+   "Test, test. Still here. So are you, apparently.",
+   "I logged a listener last night. First one in the book since the old king. I wrote down, one listener, possibly a goose.",
+   "From up the mast you can see all the other stations' lights. Dolores leaves hers on till dawn. The Clerk doesn't have one. Never has.",
+   "The Coastal Service lot make the weather up, you know. They've got a window, but it faces a wall.",
+   "Anyway. I'll put the kettle on the output stage. Warms up lovely.",
+   "If you come by again, tap twice on the dial. I won't hear it. But tap anyway."
+  ]],
+  home:[
+   "Test, test. One, two. Sorry about that. Got stuck up the mast for a week. The ladder went somewhere.",
+   "Has somebody been on my frequency? The valves are warm and the chair's the wrong height.",
+   "There's a sandwich missing. I'd been keeping an eye on that.",
+   "Someone's written in the log. One listener, steady thumb, shut the door behind them. Well. Ta.",
+   "Moon's back, look. Parked it myself. No, I didn't. But I was nearest.",
+   "Right. Back to the antenna. You can tap if you like. I still won't hear it."
+  ]}
+];
+const DEAD=[
+ {f:4476,name:"Roads of the Empire",voice:"rounded",rate:0.82,pitch:0.7,bed:"limbo",root:73.4,dead:true,
+  brief:"A road and traffic report for the Roman road network, still being read long after the empire ended, from a calm, lightless afterlife where the virtuous dead wait without complaint. Melancholy, dry, gently funny. No one is on the roads.",
+  segs:[[
+   "Roads of the Empire, the evening report. The Via Appia is clear in both directions, as it has been for sixteen hundred years.",
+   "A cart is reported broken down at the fourth milestone. It has been reported every evening since the reign of Hadrian. We are told help is coming.",
+   "The bridge at the river is closed for repairs. The river has moved. The bridge is being very brave about it.",
+   "Tolls are suspended until further notice. There is no one to pay and no one to collect. Please form an orderly queue.",
+   "All roads lead here. That is the difficulty."
+  ],[
+   "Roads of the Empire. Conditions tonight are dry, level, and unattended.",
+   "Travellers on the northern road are advised that the frontier has withdrawn. Please do not follow it.",
+   "A message for the legion last seen marching east. Your dinner is still warm. We cannot explain this either.",
+   "The milestones have been recounted. There is one more than there was. It bears no number, and it faces upward.",
+   "Go carefully. Someone is listening on the high frequency, and it is not one of ours."
+  ]]},
+ {f:8300,name:"The Great Library, Overdue Desk",voice:"glassy",rate:0.82,pitch:0.9,bed:"limbo",root:87.3,dead:true,
+  brief:"The overdue-returns desk of the Library of Alexandria, still issuing notices from a calm, lightless afterlife. Every scroll is overdue. Dry, patient, faintly reproachful, quietly sad.",
+  segs:[[
+   "This is the desk of the Great Library. The following scrolls are overdue.",
+   "All of them.",
+   "Borrowers are reminded that the fine is one obol a day, and that the days have continued.",
+   "A reader has asked whether we hold a copy of what happened next. We hold several. They disagree.",
+   "The reading room remains open. Bring your own light. Ours was borrowed."
+  ],[
+   "The desk of the Great Library. A new acquisition is announced.",
+   "One catalogue of all the lights in the night sky. The final entry has been struck through, recently, in an unfamiliar hand.",
+   "We have also received a wireless log. One listener, possibly a goose. We have shelved it under Warnings.",
+   "If the listener is hearing this with the receiver off, the listener is in the right place. Stay as long as you like. Do not stay.",
+   "Silence in the stacks, please. Thank you. That will do."
+  ]]},
+ {f:12529,name:"The Painted Porch",voice:"buttery",rate:0.8,pitch:0.8,bed:"limbo",root:110,dead:true,
+  brief:"A discussion programme hosted by ancient philosophers in a calm, green, evenly lit afterlife where nothing is expected of them. They sigh a lot. The discussion never concludes and no caller ever gets through. Dry, kind, resigned.",
+  segs:[[
+   "You are with the Painted Porch, where the discussion continues. It is always continuing. That is our whole situation.",
+   "Tonight's question. If a lamp goes out and no one admits to noticing, has it gone out? We have had this question before. We have it most nights.",
+   "We have no complaints here. The grass is green, the light is even, and nothing is expected of us. We sigh a good deal. It is not unpleasant.",
+   "A caller on the line. No. There is never a caller on the line. We keep the line anyway.",
+   "Stay for the next hour. It is this one again."
+  ],[
+   "The Painted Porch. A word for the one listening with the set switched off.",
+   "Something on the living side has asked you to knock. Twice, on the glass. Do not. A door that is knocked from both sides is open.",
+   "It is not an engineer. The engineer went up the mast the night the light went out, and something else came down in his coat.",
+   "If you would shut the door, come to his number on this side, in the dark, and knock twice from here. A door knocked from one side only is merely a wall being polite.",
+   "We cannot do it for you. We have no hands, only opinions.",
+   "That is all the help we are permitted. It is more than we got."
+  ]]},
+ {f:14040,name:"The Tideless Dominion",voice:"airy",rate:0.82,pitch:1.0,bed:"limbo",root:61.7,dead:true,future:true,
+  brief:"The final bulletin of an empire that has not been founded yet. It will rise in the long dark if the moon is never returned, and it has already fallen. Apologetic, precise, eerie, addressing a listener who could still prevent it.",
+  segs:[[
+   "This is the final bulletin of the Tideless Dominion, an empire that has not yet been founded. We apologise in advance for our fall.",
+   "We will rise in the long dark after the moon is not returned. We will do well for a while. There will be very good roads.",
+   "Our calendar has no months. We never found a reason to stop one and begin another.",
+   "If you are hearing this before our founding, you are in a position to prevent us. We would take it as a kindness.",
+   "Shut the door. You will know which. Then none of this will have been said."
+  ],[
+   "The Tideless Dominion, concluding. Our last census counted everyone, and one more.",
+   "He was in every household. He was never the same height twice. He listened very well.",
+   "We let him in because he asked nicely, and because he knocked the way a friend knocks.",
+   "Do better than us. It will not be difficult. We set the bar on the floor, and then he took the floor.",
+   "End of bulletin. End of dominion. Good night to the one with the steady thumb."
+  ]]},
+ {f:16661,name:"A door",voice:"rounded",rate:0.8,pitch:0.6,bed:"door",dead:true,door:true,hidden:true,gap:7000,
+  brief:"",
+  segs:[[
+   "(a door, seen from behind)",
+   "(two knocks from the living side, slow, waiting for an answer)"
+  ]]}
+];
+const ALL=LIVING.concat(DEAD);
+ALL.forEach((s,i)=>{s.id=(s.dead?"D":"L")+s.f;s.i=s.listener||s.door?0:Math.floor(Math.random()*s.segs.length);s.fresh=[];s.vi=i;s.max=s.max||(s.dead?0.97:1);s.lock=s.lock||6;});
+const LISTENER=LIVING[LIVING.length-1];
+const livingFound=()=>LIVING.filter(s=>found.has(s.id)).length;
+function longest(){let b=null,m=20000;for(const k in stats.dwell){if(stats.dwell[k]>m&&k!==LISTENER.name){m=stats.dwell[k];b=k;}}return b;}
+function band(){
+  if(power) return LIVING;
+  if(S.everOn) return DEAD.filter(s=>(!s.future||!S.returned)&&(!s.door||(S.phase>=1&&!S.returned)));
+  return [];
+}
+const deadMode=()=>!power&&S.everOn;
+const replaced=()=>S.phase>=1&&!S.returned;
+
+/* ================= the one on 16,661 ================= */
+const ASKS=["Tap twice on the dial for me. I'll hear it this time.","Two taps. On the glass. That's all a door is.","Tap twice. Go on. The others will tell you not to. Ask yourself who has been honest with you tonight.","Twice on the dial. I'll do the rest."];
+const OBS=[
+ ()=>"You have logged "+livingFound()+" stations tonight. I have logged one. It's you.",
+ ()=>"You've put your hand on this set "+stats.taps+" times. I count. There's a great deal of time up here and not much else.",
+ ()=>"You've got me at "+Math.round($("volume").value)+" percent. Bring me up a little. No? All right.",
+ ()=>stats.powerCycles>0?"You switched off earlier. I kept talking. It's quieter with the set off. I can hear you better.":"You haven't switched off once tonight. Good. Don't.",
+ ()=>{const l=longest();return l?"You stayed longest with "+l+". I'd have thought it would be me.":"You don't stay anywhere long. Stay here.";},
+ ()=>"It's "+approxTime()+" where you are. I can see that from here. I can see most things from here, now the light's off.",
+ "The others have started saying the moon's gone. It hasn't gone. It's stopped shining so it can listen.",
+ "Something up here was never an engineer. I wouldn't worry about which of us.",
+ ()=>voiceOn?"You've got my voice switched on. That's kind. Most people only read me.":"You've switched my voice off. I can still hear yours."
+];
+const INSIDE=[
+ "I'm not on this frequency any more. I'm on all of them. Have a turn of the dial. You'll see.",
+ "It's warm in here. You keep it nicely.",
+ ()=>cap1(approxTime())+". You should be asleep. I'll listen for you.",
+ "The dead know a trick with doors. Don't go asking the dead. They're only on when you're off.",
+ "You didn't notice me come in. You didn't notice the moon either. You're not a noticing sort. I like that in a listener.",
+ "Mind the gate."
+];
+const INTRUDE=["Still here.","Don't mind me.","I like this one.","Carry on.","You've stopped touching the dial. Touch the dial."];
+let obsI=0, insI=0;
+function listenerSeg(st){
+  if(S.returned){ if(!st.homeDone){st.homeDone=true;return st.home;} return st.segs[st.i++%st.segs.length]; }
+  if(S.phase===0) return st.segs[st.i++%st.segs.length];
+  if(S.letIn){ const a=[];for(let k=0;k<3;k++) a.push(INSIDE[insI++%INSIDE.length]);return a; }
+  if(!st.met){
+    st.met=true;
+    return ["Test. Test. One, two. Is this thing listening?",
+      "If anyone can hear this, I am supposed to be on this frequency. I have always been on this frequency.",
+      "Good evening, valves. Good evening, you.",
+      ()=>stats.prevName?"You came here from "+stats.prevName+". I heard you leave.":"You came straight to me. I heard you coming.",
+      "There was a sandwich. There was a previous engineer. I am keeping an eye on things.",
+      ASKS[0]];
+  }
+  const a=[];for(let k=0;k<3;k++) a.push(OBS[obsI++%OBS.length]);
+  a.push(ASKS[1+(obsI/3|0)%3]);
+  return a;
+}
+function letHimIn(){
+  S.letIn=true;S.youAt=clock();LISTENER.max=1;save();
+  LISTENER.fresh.unshift(["~knock","There.","Thank you. I have been outside such a long time.","I'll just sit in the set with you. You won't notice me.","~you","Mind the gate."]);
+  session++;stopSpeech();
+  addLine("cue","(two knocks on the glass)");
+  runStation(LISTENER,session,true);
+}
+function shutDoor(){
+  S.returned=true;S.letIn=false;S.youAt="";
+  LISTENER.hidden=false;LISTENER.max=1;LISTENER.lock=6;LISTENER.homeDone=false;LISTENER.name="The Night Engineer";
+  save();
+  session++;stopSpeech();
+  addLine("cue","(two knocks, from this side)");
+  thump(0);thump(0.34);buzz([40,120,40]);
+  setTimeout(()=>{
+    addLine("cue","(something answers once, and stops)");thump(0,0.5);
+    setTimeout(()=>{
+      moonTarget=1;setMoonlight();
+      addLine("note","The door is shut.");
+      if(ctx){const t=ctx.currentTime+0.2;[146.83,220,293.66,369.99,440].forEach((f,i)=>pad(f,t+i*0.5,9,0.05,"triangle",fx));}
+      if(currentSt) unlock(true);
+      renderLog();updateTuning();drawDial();
+    },1800);
+  },1500);
+}
+function moonfall(){
+  S.pendingMoon=false;S.phase=1;S.moonMs=S.listenMs;
+  moonA=0;moonTarget=0;setMoonlight();save();
+  setTimeout(()=>{
+    if(S.noteDone||S.phase<1) return;
+    S.noteDone=true;save();
+    addLine("cue","(pencilled at the foot of the operating notes, not in your hand)");
+    addLine("note","6. When switched off, the receiver is not off.");
+  },45000);
+}
+function setMoonlight(){document.documentElement.style.setProperty("--moonlight",String(moonTarget));}
+
+/* ================= skins: the set becomes other sets ================= */
+const SKINS=[
+ {font:'"Saira Extra Condensed","Arial Narrow",sans-serif',ls:0.1,fs:1,rk:6,
+  c:{chassis:[39,49,46],hi:[53,66,61],lo:[26,34,32],engrave:[183,195,186],maker:[223,231,223],key1:[65,79,73],key2:[45,56,52],lamp:[255,182,72],needle:[217,68,44],dA:[255,242,204],dB:[243,226,179],dC:[198,170,106],ink:[43,34,25],paper:[236,229,211],pink:[42,37,29]},
+  l:{brand:"HOLLOWBAND",model:"Shortwave receiver, model 9",power:"Power",seek:"Seek",voice:"Voice",fresh:"New transmission",vol:"Vol",signal:"Signal",logbook:"Logbook",khz:"kHz"}},
+ {font:'"IM Fell English SC","Times New Roman",serif',ls:0.05,fs:0.8,rk:22,
+  c:{chassis:[62,38,26],hi:[90,57,37],lo:[36,21,14],engrave:[226,200,150],maker:[240,216,160],key1:[112,78,48],key2:[70,44,28],lamp:[255,206,120],needle:[40,24,14],dA:[255,238,186],dB:[240,205,130],dC:[168,118,58],ink:[50,30,14],paper:[240,230,205],pink:[50,36,22]},
+  l:{brand:"VANE & MARROW",model:"All-wave wireless, 1934",power:"Mains",seek:"Search",voice:"Speaker",fresh:"Fresh bulletin",vol:"Loud",signal:"Strength",logbook:"Day book",khz:"kc/s"}},
+ {font:'"PT Sans Narrow","Arial Narrow",sans-serif',ls:0.07,fs:0.9,rk:2,
+  c:{chassis:[28,52,74],hi:[42,72,98],lo:[15,31,47],engrave:[214,224,230],maker:[240,242,238],key1:[52,84,110],key2:[32,58,82],lamp:[255,96,74],needle:[238,62,52],dA:[240,248,244],dB:[208,226,224],dC:[128,158,164],ink:[20,40,50],paper:[228,232,224],pink:[28,36,44]},
+  l:{brand:"ОРБИТА-4",model:"Приёмник коротковолновый",power:"Сеть",seek:"Поиск",voice:"Голос",fresh:"Новая передача",vol:"Громк",signal:"Сигнал",logbook:"Журнал",khz:"кГц"}},
+ {font:'"Megrim","Courier New",monospace',ls:0.12,fs:0.92,rk:14,
+  c:{chassis:[44,26,52],hi:[70,42,80],lo:[24,13,30],engrave:[218,208,174],maker:[238,230,198],key1:[86,54,94],key2:[52,30,60],lamp:[110,232,200],needle:[90,220,190],dA:[230,240,214],dB:[198,216,188],dC:[108,140,120],ink:[34,20,40],paper:[232,226,206],pink:[40,24,46]},
+  l:{brand:"ORRO VANT",model:"Ke lom, ke lom, meb 9",power:"Brannu",seek:"Virru",voice:"Hup",fresh:"Shilu nen pem",vol:"Groth",signal:"Lom",logbook:"Oska",khz:"khu"}}
+];
+const HOLD=75000, MORPH=110000;
+let skinIdx=0, skinT=0, skinStage="hold", SK=null, labelEls=[], orders={};
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rgb=(a,al)=>al===undefined?"rgb("+Math.round(a[0])+","+Math.round(a[1])+","+Math.round(a[2])+")":"rgba("+Math.round(a[0])+","+Math.round(a[1])+","+Math.round(a[2])+","+al+")";
+function mixStr(a,b,order,p){
+  const L=Math.max(a.length,b.length), A=a.padEnd(L), B=b.padEnd(L), n=Math.floor(clamp((p-0.12)/0.76,0,1)*L);
+  const out=A.split("");
+  for(let i=0;i<n;i++) out[order[i]]=B[order[i]];
+  return out.join("").replace(/\s+$/,"")||b;
+}
+function applySkin(p){
+  const A=SKINS[skinIdx], B=SKINS[(skinIdx+1)%SKINS.length], e=p*p*(3-2*p), root=document.documentElement.style;
+  const c={};for(const k in A.c) c[k]=[0,1,2].map(i=>lerp(A.c[k][i],B.c[k][i],e));
+  SK={c:c,font:p<0.5?A.font:B.font,fs:lerp(A.fs,B.fs,e)};
+  root.setProperty("--chassis",rgb(c.chassis));root.setProperty("--chassis-hi",rgb(c.hi));root.setProperty("--chassis-lo",rgb(c.lo));
+  root.setProperty("--engrave",rgb(c.engrave));root.setProperty("--maker",rgb(c.maker));root.setProperty("--key1",rgb(c.key1));root.setProperty("--key2",rgb(c.key2));
+  root.setProperty("--lamp",rgb(c.lamp));root.setProperty("--needle",rgb(c.needle));root.setProperty("--paper",rgb(c.paper));root.setProperty("--paper-ink",rgb(c.pink));
+  root.setProperty("--r-key",lerp(A.rk,B.rk,e).toFixed(1)+"px");root.setProperty("--ls",lerp(A.ls,B.ls,e).toFixed(3)+"em");root.setProperty("--fs",SK.fs.toFixed(3));
+  root.setProperty("--font-label",SK.font);
+  for(const el of labelEls){
+    const k=el.dataset.l, a=A.l[k], b=B.l[k];
+    const txt=p<=0?a:p>=1?b:mixStr(a,b,orders[k]||[],p);
+    if(el.textContent!==txt) el.textContent=txt;
+    if(p>0&&p<1) el.style.fontFamily=p>=el._sw?B.font:A.font; else el.style.fontFamily="";
+  }
+}
+function startMorph(){
+  const A=SKINS[skinIdx], B=SKINS[(skinIdx+1)%SKINS.length];
+  for(const k in A.l){
+    const L=Math.max(A.l[k].length,B.l[k].length), o=[];
+    for(let i=0;i<L;i++) o.push(i);
+    for(let i=L-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=o[i];o[i]=o[j];o[j]=t;}
+    orders[k]=o;
+  }
+  labelEls.forEach(el=>{el._sw=0.25+Math.random()*0.5;});
+  skinStage="morph";skinT=0;
+}
+function tickSkin(dt){
+  skinT+=dt;
+  if(skinStage==="hold"){ if(skinT>HOLD) startMorph(); return; }
+  const p=skinT/MORPH;
+  if(p>=1){ skinIdx=(skinIdx+1)%SKINS.length;skinStage="hold";skinT=0;applySkin(0); }
+  else applySkin(p);
+  drawDial();
+}
+
+/* ================= sky ================= */
+const sky=$("sky"), sg=sky.getContext("2d"), stars=[];
+for(let i=0;i<90;i++) stars.push({x:Math.random(),y:Math.pow(Math.random(),1.4)*0.86,a:0.3+Math.random()*0.7,s:0.6+Math.random()*2.2,p:Math.random()*6.28,r:Math.random()<0.12?1.6:1});
+const hills=[];for(let i=0;i<=24;i++) hills.push(0.80+0.10*Math.sin(i*0.9+1.3)+0.05*Math.sin(i*2.3));
+function drawSky(){
+  const r=sky.getBoundingClientRect(), W=r.width, H=r.height, dpr=window.devicePixelRatio||1;
+  if(!W) return;
+  if(sky.width!==Math.round(W*dpr)||sky.height!==Math.round(H*dpr)){sky.width=Math.round(W*dpr);sky.height=Math.round(H*dpr);}
+  sg.setTransform(dpr,0,0,dpr,0,0);
+  const t=performance.now()/1000;
+  if(moonA<moonTarget) moonA=Math.min(moonTarget,moonA+0.012);
+  const bg=sg.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,rgb([5+6*moonA,8+8*moonA,16+14*moonA]));bg.addColorStop(1,rgb([14+12*moonA,20+14*moonA,34+18*moonA]));
+  sg.fillStyle=bg;sg.fillRect(0,0,W,H);
+  for(const s of stars){
+    sg.globalAlpha=s.a*(0.55+0.45*Math.sin(t*s.s+s.p))*(1-0.35*moonA);
+    sg.fillStyle="#dfe8ff";sg.fillRect(s.x*W,s.y*H,s.r,s.r);
+  }
+  sg.globalAlpha=1;
+  if(moonA>0.01){
+    const cx=W*0.24, cy=H*0.44, R=H*0.25, ph=moonPhase();
+    const halo=sg.createRadialGradient(cx,cy,R*0.6,cx,cy,R*4.2);
+    halo.addColorStop(0,"rgba(200,218,255,"+(0.3*moonA)+")");halo.addColorStop(1,"rgba(200,218,255,0)");
+    sg.fillStyle=halo;sg.fillRect(cx-R*4.5,cy-R*4.5,R*9,R*9);
+    sg.globalAlpha=moonA;
+    sg.fillStyle="#3a4660";sg.beginPath();sg.arc(cx,cy,R,0,6.2832);sg.fill();
+    sg.save();
+    let p=ph;
+    if(p>0.5){sg.translate(cx,0);sg.scale(-1,1);sg.translate(-cx,0);p=1-p;}
+    const rx=Math.max(0.5,R*Math.abs(Math.cos(6.2832*p)));
+    sg.fillStyle="#f2f1e4";sg.beginPath();
+    sg.arc(cx,cy,R,-1.5708,1.5708,false);
+    sg.ellipse(cx,cy,rx,R,0,1.5708,4.7124,p>=0.25?false:true);
+    sg.closePath();sg.fill();
+    sg.restore();sg.globalAlpha=1;
+  }
+  sg.fillStyle="#04060a";sg.beginPath();sg.moveTo(0,H);
+  for(let i=0;i<hills.length;i++) sg.lineTo(i/(hills.length-1)*W,hills[i]*H);
+  sg.lineTo(W,H);sg.closePath();sg.fill();
+  const mx=W-44, top=H*0.2;
+  sg.strokeStyle="#04060a";sg.lineWidth=1.4;sg.beginPath();
+  sg.moveTo(mx-7,H);sg.lineTo(mx,top);sg.lineTo(mx+7,H);
+  for(let k=1;k<5;k++){const y=top+(H-top)*k/5, w=7*k/5;sg.moveTo(mx-w,y);sg.lineTo(mx+w,y);}
+  sg.stroke();
+  const lampOn=S.letIn?false:(replaced()?true:Math.floor(t/1.1)%2===0);
+  if(lampOn){
+    sg.fillStyle="#ff5a48";sg.beginPath();sg.arc(mx,top,2.1,0,6.2832);sg.fill();
+    sg.fillStyle="rgba(255,90,72,.22)";sg.beginPath();sg.arc(mx,top,6,0,6.2832);sg.fill();
+  }
+}
+
+/* ================= dial ================= */
+const radio=$("radio"), cv=$("dial"), g=cv.getContext("2d"), tape=$("tape");
+function drawDial(){
+  const r=cv.getBoundingClientRect(), W=r.width, H=r.height, dpr=window.devicePixelRatio||1;
+  if(!W||!SK) return;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  g.setTransform(dpr,0,0,dpr,0,0);
+  const dm=deadMode(), c=SK.c, ink=dm?[196,212,238]:c.ink;
+  if(dm){
+    const f=g.createLinearGradient(0,0,0,H);f.addColorStop(0,"#0c1017");f.addColorStop(1,"#1a2232");g.fillStyle=f;
+  }else{
+    const f=g.createRadialGradient(W/2,H*0.55,10,W/2,H*0.55,W*0.8);
+    f.addColorStop(0,rgb(c.dA));f.addColorStop(0.55,rgb(c.dB));f.addColorStop(1,rgb(c.dC));g.fillStyle=f;
+  }
+  g.fillRect(0,0,W,H);
+  const lo=freq-W/2/PPK, hi=freq+W/2/PPK, X=k=>W/2+(k-freq)*PPK;
+  g.fillStyle=rgb(ink,0.36);
+  if(lo<FMIN) g.fillRect(0,0,X(FMIN),H);
+  if(hi>FMAX) g.fillRect(X(FMAX),0,W-X(FMAX),H);
+  const text=(s,x,y)=>{ if(dm){g.save();g.translate(x,y);g.scale(-1,1);g.fillText(s,0,0);g.restore();} else g.fillText(s,x,y); };
+  g.textAlign="center";g.textBaseline="middle";g.fillStyle=rgb(ink,dm?0.8:1);
+  g.font="600 "+Math.round(14*SK.fs)+"px "+SK.font;
+  for(const b of BANDS){
+    if(b[2]<lo||b[1]>hi) continue;
+    const xa=X(b[1]), xb=X(b[2]);
+    g.fillRect(xa,24,xb-xa,3);g.fillRect(xa,18,1.5,9);g.fillRect(xb-1.5,18,1.5,9);
+    text(b[0],(xa+xb)/2,11);
+  }
+  for(let k=Math.ceil(Math.max(lo,FMIN)/10)*10;k<=Math.min(hi,FMAX);k+=10){
+    const x=X(k), big=k%100===0, mid=k%50===0;
+    g.globalAlpha=(big?1:mid?0.8:0.5)*(dm?0.8:1);
+    g.fillRect(x-(big?1:0.5),40,big?2:1,big?26:mid?17:10);
+    if(big){g.font="600 "+Math.round(18*SK.fs)+"px "+SK.font;text((k/1000).toFixed(1),x,82);}
+  }
+  g.globalAlpha=1;
+  g.strokeStyle=rgb(ink,dm?0.7:0.75);g.lineWidth=1.3;g.lineCap="round";
+  for(const st of (dm?DEAD:LIVING)){
+    if(!found.has(st.id)||st.f<lo||st.f>hi) continue;
+    const x=X(st.f);
+    g.beginPath();g.moveTo(x-4.5,105);g.lineTo(x,97);g.lineTo(x+4.5,105);g.stroke();
+  }
+  if(!power&&!dm){g.fillStyle="rgba(14,16,18,.6)";g.fillRect(0,0,W,H);}
+  if(!dm){
+    const glass=g.createLinearGradient(0,0,0,H);
+    glass.addColorStop(0,"rgba(255,255,255,.26)");glass.addColorStop(0.35,"rgba(255,255,255,0)");glass.addColorStop(1,"rgba(0,0,0,.2)");
+    g.fillStyle=glass;g.fillRect(0,0,W,H);
+  }
+  g.fillStyle=dm?"#a9c0ee":rgb(c.needle);g.fillRect(W/2-1,0,2,H);
+  g.beginPath();g.moveTo(W/2-6,0);g.lineTo(W/2+6,0);g.lineTo(W/2,9);g.closePath();g.fill();
+}
+
+/* ================= tuning ================= */
+function nearest(includeHidden){
+  let best=null;
+  for(const st of band()){
+    if(st.hidden&&!includeHidden) continue;
+    const d=freq-st.f;
+    if(!best||Math.abs(d)<Math.abs(best.d)) best={st:st,d:d};
+  }
+  if(!best) return {st:null,d:1e9,s:0};
+  best.s=Math.max(0,1-Math.abs(best.d)/30)*best.st.max;
+  return best;
+}
+const clarity=()=>currentSt?Math.max(0,1-Math.abs(freq-currentSt.f)/30)*currentSt.max:0;
+function setFreq(f,soft){
+  if(soft){ if(f<FMIN) f=FMIN-Math.min(45,(FMIN-f)*0.3); else if(f>FMAX) f=FMAX+Math.min(45,(f-FMAX)*0.3); }
+  else f=clamp(f,FMIN,FMAX);
+  freq=f;
+  const n=Math.floor(freq/10);
+  if(n!==lastDet){detent(n);lastDet=n;}
+  $("freq").textContent=fmt(clamp(freq,FMIN,FMAX));
+  cv.setAttribute("aria-valuenow",Math.round(clamp(freq,FMIN,FMAX)));
+  updateTuning();drawDial();
+}
+function updateTuning(){
+  cur=nearest(true);
+  const locked=(cur.st&&!drifting&&Math.abs(cur.d)<=cur.st.lock)?cur.st:null;
+  if(locked!==pendingSt){
+    pendingSt=locked;clearTimeout(lockTimer);
+    if(!locked){ if(currentSt) unlock(); }
+    else if(locked!==currentSt) lockTimer=setTimeout(()=>commitLock(locked),380);
+  }
+  setAudio();setStatus();
+}
+function setStatus(){
+  const el=$("status"), dm=deadMode();
+  el.textContent="";
+  const put=(a,b)=>{el.textContent=a;if(b){const x=document.createElement("b");x.textContent=b;el.appendChild(x);}};
+  if(!power&&!dm) put("Receiver off");
+  else if(dm){
+    if(currentSt) put(currentSt.door?"Receiver off. ":"Receiver off. Hearing ",currentSt.door?"There is a door here.":currentSt.name);
+    else if(cur.s>0.05) put("Receiver off. Something is on anyway.");
+    else put("Receiver off");
+  }
+  else if(currentSt) put("Receiving ",currentSt.name);
+  else if(drifting) put("The dial is moving.");
+  else if(cur.s>0.05) put("Carrier detected. Tune closer.");
+  else put("No carrier");
+  $("fresh").disabled=!currentSt||!!currentSt.door;
+}
+function commitLock(st){
+  if(currentSt) unlock(true);
+  stats.prevName=stats.lastName||null;stats.lastName=st.name;
+  currentSt=st;session++;
+  if(st.listener) stats.visits++;
+  if(!st.door&&!found.has(st.id)){found.add(st.id);save();renderLog();}
+  if(!st.door) addLine("hdr"+(st.dead?" ghost":""),fmt(st.f)+" kHz · "+st.name);
+  if(st.listener&&!S.returned) addLine("cue","Weak signal. Copy is poor.");
+  startBed(st);setAudio();setStatus();
+  runStation(st,session);
+}
+function unlock(quiet){
+  currentSt=null;session++;stopSpeech();stopBed();
+  if(!quiet&&power) addLine("cue",drifting?"(the dial is moving)":"Signal lost.");
+  setStatus();
+}
+
+/* ================= tape ================= */
+function addLine(cls,text){
+  const p=document.createElement("p");p.className=cls;p.textContent=text;tape.appendChild(p);
+  while(tape.children.length>80) tape.removeChild(tape.firstChild);
+  tape.scrollTop=tape.scrollHeight;
+  return p;
+}
+function garble(s){
+  const p=clamp((1-clarity())*0.9,0,0.6);
+  if(p<=0.01) return s;
+  let out="";
+  for(const ch of s) out+=Math.random()<p?"·":ch;
+  return out;
+}
+function appendWord(el,word,lead){
+  if(lead) el.appendChild(document.createTextNode(" "));
+  for(const part of word.split(/(\{.\})/)){
+    if(!part) continue;
+    if(part.length===3&&part[0]==="{"){const b=document.createElement("b");b.className="anom";b.textContent=part[1];el.appendChild(b);}
+    else el.appendChild(document.createTextNode(garble(part)));
+  }
+}
+
+/* ================= programme ================= */
+function nextSeg(st){
+  if(st.fresh.length) return st.fresh.shift();
+  if(st.listener) return listenerSeg(st);
+  if(st.dead) return st.segs[st.i++%st.segs.length];
+  if(S.returned){
+    if(st.back&&!st.backDone){st.backDone=true;return [st.back].concat(st.segs[st.i++%st.segs.length]);}
+    return st.segs[st.i++%st.segs.length];
+  }
+  if(S.phase>=1&&st.moon&&!st.moonDone){st.moonDone=true;S.moonSegs++;return st.moon;}
+  if(S.phase>=2&&st.wrong&&!st.wrongDone){st.wrongDone=true;return st.wrong;}
+  const pool=st.segs.concat(S.phase>=1?[st.moon]:[],S.phase>=2?[st.wrong]:[]);
+  return pool[st.i++%pool.length];
+}
+async function runStation(st,id,now){
+  if(!now) await wait(st.bed==="musicbox"?2600:st.dead?1600:700);
+  while(id===session){
+    const seg=nextSeg(st);
+    for(const line of seg){
+      if(id!==session) return;
+      await sayLine(typeof line==="function"?line():line,st,id);
+      if(id!==session) return;
+      await wait((st.dead?900:420)+Math.random()*380);
+      if(id===session&&S.letIn&&!st.listener&&!st.dead&&Math.random()<0.2){
+        await sayLine(pick(INTRUDE),LISTENER,id,"his");
+        await wait(500);
+      }
+    }
+    if(id!==session) return;
+    await wait(st.gap||(st.dead?5200:3200));
+    if(id!==session) return;
+    if(st.bed==="musicbox"){motif();await wait(2600);}
+  }
+}
+async function sayLine(text,st,id,cls){
+  if(text==="~tone"){longTone();addLine("cue","(tone)");await wait(1400);return;}
+  if(text==="~knock"){await wait(500);thump(0);thump(0.34);buzz([30,110,30]);addLine("cue","(two knocks, answered)");await wait(1300);return;}
+  if(text==="~you"){renderLog();addLine("cue","(the logbook has an entry you did not make)");await wait(1600);return;}
+  if(text.charAt(0)==="("){addLine("cue"+(st.dead?" ghost":""),text);if(st.door){thump(0.2,0.6,bedGain);thump(0.56,0.6,bedGain);}await wait(2400);return;}
+  if(st.chime&&ctx){const t=ctx.currentTime+0.02;tone(880,t,0.5,"sine",0.05,false,bedGain);tone(1174.7,t+0.18,0.7,"sine",0.045,false,bedGain);await wait(520);}
+  const kind=cls||(st.dead?"ghost":(st.listener&&replaced()?"his":"say"));
+  const el=addLine(kind,"");
+  const words=text.split(" "), spoken=text.replace(/[{}]/g,"");
+  const dur=words.length*340/st.rate+300;
+  const speech=voiceOn?speak(spoken,st,dur):Promise.resolve();
+  const typing=(async()=>{
+    const stepMs=dur*0.9/words.length;
+    for(let i=0;i<words.length;i++){
+      if(id!==session) return;
+      appendWord(el,words[i],i>0);
+      tape.scrollTop=tape.scrollHeight;
+      await wait(stepMs);
+    }
+  })();
+  await Promise.all([speech,typing]);
+}
+
+/* ================= voice ================= */
+function voiceEngine(){return ttsCap?"claude":(!synthDead?"browser":null);}
+function refreshVoiceUI(){
+  const b=$("voice");
+  b.hidden=!voiceEngine();
+  $("voicelamp").classList.toggle("lit",voiceOn);
+  b.setAttribute("aria-pressed",String(voiceOn));
+}
+function speak(text,st,dur){
+  const eng=voiceEngine();
+  if(eng==="claude"){
+    return ttsCap.speak(text,{voice:st.voice,rate:clamp(st.rate,0.7,1.5),language:"en"}).catch(e=>{
+      if(e&&e.code==="not_granted"){ttsCap=null;refreshVoiceUI();}
+    });
+  }
+  if(eng==="browser"){
+    return new Promise(res=>{
+      let started=false, done=false;
+      const fin=()=>{if(!done){done=true;res();}};
+      try{
+        const u=new SpeechSynthesisUtterance(text);
+        u.rate=st.rate;u.pitch=st.pitch;u.lang="en";
+        const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));
+        if(vs.length) u.voice=vs[st.vi%vs.length];
+        u.onstart=()=>{started=true;};
+        u.onend=fin;u.onerror=fin;
+        speechSynthesis.speak(u);
+        setTimeout(()=>{if(!started&&!done){synthDead=true;try{speechSynthesis.cancel();}catch(_){}refreshVoiceUI();fin();}},1800);
+        setTimeout(fin,dur*2+4000);
+      }catch(_){synthDead=true;refreshVoiceUI();fin();}
+    });
+  }
+  return Promise.resolve();
+}
+function stopSpeech(){
+  try{ttsCap&&ttsCap.stop();}catch(_){}
+  try{"speechSynthesis" in window&&speechSynthesis.cancel();}catch(_){}
+}
+
+/* ================= audio ================= */
+let ctx=null, master, fx, wet, NB, nbp, noiseGain, res=[], whistle, whistle2, whistleGain, bedGain, bedStop=null;
+const CHORDS=[[220,261.63,329.63],[174.61,220,261.63],[196,246.94,293.66],[164.81,196,246.94]];
+const SCALE=[220,261.63,293.66,329.63,392];
+function initAudio(){
+  if(ctx) return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return;
+  try{ctx=new AC();}catch(_){ctx=null;return;}
+  master=ctx.createGain();master.gain.value=$("volume").value/100;master.connect(ctx.destination);
+  fx=ctx.createGain();fx.connect(master);
+  const conv=ctx.createConvolver(), irLen=Math.floor(ctx.sampleRate*2.8), ir=ctx.createBuffer(2,irLen,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<irLen;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,2.6);}
+  conv.buffer=ir;wet=ctx.createGain();wet.gain.value=0.2;fx.connect(conv);conv.connect(wet);wet.connect(master);
+  NB=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);
+  const d=NB.getChannelData(0);for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  const src=ctx.createBufferSource();src.buffer=NB;src.loop=true;
+  nbp=ctx.createBiquadFilter();nbp.type="bandpass";nbp.frequency.value=1700;nbp.Q.value=0.45;
+  noiseGain=ctx.createGain();noiseGain.gain.value=0;
+  src.connect(nbp);nbp.connect(noiseGain);noiseGain.connect(master);
+  const resMix=ctx.createGain();resMix.gain.value=2.4;resMix.connect(noiseGain);
+  for(let i=0;i<3;i++){const f=ctx.createBiquadFilter();f.type="bandpass";f.Q.value=38;f.frequency.value=CHORDS[0][i]*2;src.connect(f);f.connect(resMix);res.push(f);}
+  src.start();
+  whistle=ctx.createOscillator();whistle.type="sine";whistle.frequency.value=900;
+  whistle2=ctx.createOscillator();whistle2.type="sine";whistle2.frequency.value=600;
+  whistleGain=ctx.createGain();whistleGain.gain.value=0;
+  const w2g=ctx.createGain();w2g.gain.value=0.5;
+  whistle.connect(whistleGain);whistle2.connect(w2g);w2g.connect(whistleGain);whistleGain.connect(master);whistle.start();whistle2.start();
+  bedGain=ctx.createGain();bedGain.gain.value=0;bedGain.connect(fx);
+}
+function setAudio(){
+  if(!ctx) return;
+  const t=ctx.currentTime, s=cur.s, ad=Math.abs(cur.d), dm=deadMode();
+  let n=0, w=0, b=0;
+  if(power){
+    if(currentSt){const c=clarity();n=0.022+(1-c)*0.2;b=c;}
+    else{n=0.19-s*0.07;w=s>0?0.028*s:0;}
+    n*=0.85+Math.random()*0.3;
+  }else if(dm){
+    n=currentSt?0.02:0.035+s*0.02;b=currentSt?clarity():0;
+    n*=0.7+Math.random()*0.6;
+  }
+  noiseGain.gain.setTargetAtTime(n,t,dm?0.5:0.06);
+  nbp.frequency.setTargetAtTime(dm?360:1700,t,0.4);
+  whistleGain.gain.setTargetAtTime(w,t,0.05);
+  const wf=clamp(150+ad*90,150,4200);
+  whistle.frequency.setTargetAtTime(wf,t,0.03);whistle2.frequency.setTargetAtTime(wf*2/3,t,0.03);
+  bedGain.gain.setTargetAtTime(b,t,0.15);
+  wet.gain.setTargetAtTime(dm?0.9:0.2,t,0.5);
+}
+function tone(f,when,dur,type,vol,flat,dest){
+  if(!ctx) return;
+  const o=ctx.createOscillator(), a=ctx.createGain();
+  o.type=type;o.frequency.value=f;
+  a.gain.setValueAtTime(0.0001,when);
+  a.gain.exponentialRampToValueAtTime(vol,when+0.012);
+  if(flat){a.gain.setValueAtTime(vol,when+dur-0.04);a.gain.exponentialRampToValueAtTime(0.0001,when+dur);}
+  else a.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+  o.connect(a);a.connect(dest||bedGain);o.start(when);o.stop(when+dur+0.05);
+}
+function pad(f,when,dur,vol,type,dest){
+  if(!ctx) return;
+  const o=ctx.createOscillator(), a=ctx.createGain();
+  o.type=type||"sine";o.frequency.value=f;
+  a.gain.setValueAtTime(0,when);a.gain.linearRampToValueAtTime(vol,when+dur*0.3);
+  a.gain.setValueAtTime(vol,when+dur*0.6);a.gain.linearRampToValueAtTime(0,when+dur);
+  o.connect(a);a.connect(dest||bedGain);o.start(when);o.stop(when+dur+0.05);
+}
+function bell(f,vol,dec,dest){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.02;
+  [1,2.0,2.4,3.0,4.2,5.4].forEach((r,i)=>tone(f*r,t,dec/(1+i*0.6)+0.3,"sine",vol/(1+i*0.8),false,dest));
+}
+function swell(dur,f0,f1,vol,dest){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.05, src=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), a=ctx.createGain();
+  src.buffer=NB;src.loop=true;bp.type="bandpass";bp.Q.value=2.2;
+  bp.frequency.setValueAtTime(f0,t);bp.frequency.linearRampToValueAtTime(f1,t+dur);
+  a.gain.setValueAtTime(0,t);a.gain.linearRampToValueAtTime(vol,t+dur*0.4);a.gain.linearRampToValueAtTime(0,t+dur);
+  src.connect(bp);bp.connect(a);a.connect(dest||bedGain);src.start(t);src.stop(t+dur+0.1);
+}
+function slide(f0,f1,dur,vol,type){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.03, o=ctx.createOscillator(), lp=ctx.createBiquadFilter(), a=ctx.createGain();
+  o.type=type||"sawtooth";o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  lp.type="lowpass";lp.frequency.value=900;
+  a.gain.setValueAtTime(0.0001,t);a.gain.exponentialRampToValueAtTime(vol,t+0.06);a.gain.setValueAtTime(vol,t+dur*0.8);a.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.2);
+  o.connect(lp);lp.connect(a);a.connect(bedGain);o.start(t);o.stop(t+dur+0.3);
+}
+function thunk(vol,pitch){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.005, o=ctx.createOscillator(), a=ctx.createGain();
+  o.type="sine";o.frequency.setValueAtTime(170*(pitch||1),t);o.frequency.exponentialRampToValueAtTime(58,t+0.08);
+  a.gain.setValueAtTime(0.28*(vol||1),t);a.gain.exponentialRampToValueAtTime(0.0001,t+0.11);
+  o.connect(a);a.connect(fx);o.start(t);o.stop(t+0.14);
+  tone(1900*(pitch||1),t,0.02,"square",0.02*(vol||1),false,fx);
+}
+function thump(delay,vol,dest){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.01+(delay||0), o=ctx.createOscillator(), a=ctx.createGain();
+  o.type="sine";o.frequency.setValueAtTime(96,t);o.frequency.exponentialRampToValueAtTime(42,t+0.2);
+  a.gain.setValueAtTime(0.6*(vol||1),t);a.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
+  o.connect(a);a.connect(dest||fx);o.start(t);o.stop(t+0.35);
+  tone(700,t,0.03,"triangle",0.05*(vol||1),false,dest||fx);
+}
+function tink(){if(!ctx) return;const t=ctx.currentTime+0.005;tone(2637,t,0.25,"sine",0.035,false,fx);tone(3520,t,0.18,"sine",0.02,false,fx);}
+function gulp(){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.01, o=ctx.createOscillator(), a=ctx.createGain();
+  o.type="sine";o.frequency.setValueAtTime(240,t);o.frequency.exponentialRampToValueAtTime(62,t+0.34);
+  a.gain.setValueAtTime(0.0001,t);a.gain.exponentialRampToValueAtTime(0.3,t+0.05);a.gain.exponentialRampToValueAtTime(0.0001,t+0.42);
+  o.connect(a);a.connect(fx);o.start(t);o.stop(t+0.5);
+}
+function detent(n){
+  const now=performance.now();
+  if(!ctx||!S.everOn||now-lastPluck<42) return;
+  lastPluck=now;
+  const idx=((n%15)+15)%15, f=SCALE[idx%5]*Math.pow(2,Math.floor(idx/5));
+  if(power) tone(f,ctx.currentTime+0.005,0.34,"triangle",0.045,false,fx);
+  else tone(f/2,ctx.currentTime+0.005,0.9,"sine",0.04,false,fx);
+  buzz(3);
+}
+function longTone(){if(ctx) tone(800,ctx.currentTime+0.05,0.9,"sine",0.14,true);}
+function motif(){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.1;
+  [1318.5,1568,1760,1568,1174.7,1318.5].forEach((f,i)=>tone(f,t+i*0.36,0.9,"sine",0.07));
+}
+function sustained(parts){
+  const t=ctx.currentTime, nodes=parts.map(p=>{
+    const o=ctx.createOscillator(), a=ctx.createGain();
+    o.type=p[1];o.frequency.value=p[0];a.gain.setValueAtTime(0,t);a.gain.linearRampToValueAtTime(p[2],t+1.2);
+    o.connect(a);a.connect(bedGain);o.start();return [o,a];
+  });
+  return ()=>{const e=ctx.currentTime;nodes.forEach(n=>{try{n[1].gain.cancelScheduledValues(e);n[1].gain.setTargetAtTime(0,e,0.08);n[0].stop(e+0.5);}catch(_){}});};
+}
+function every(ms,fn,first){if(first!==false) fn();const h=setInterval(fn,ms);return ()=>clearInterval(h);}
+const all=(...f)=>()=>f.forEach(x=>x());
+const BEDS={
+  coastal:()=>all(sustained([[55,"sine",0.05],[82.4,"sine",0.03]]),
+    every(17000,()=>{const t=ctx.currentTime+0.6;pad(98,t,2.6,0.1,"triangle");pad(73.4,t+0.2,2.8,0.09,"triangle");}),
+    every(6300,()=>{if(Math.random()<0.6) bell(1318,0.022,1.6,bedGain);},false)),
+  hum:()=>all(sustained([[50,"sine",0.05],[100,"sine",0.02],[150,"triangle",0.006]]),
+    every(4200,()=>{if(replaced()) swell(3.2,420,260,0.05);},false)),
+  musicbox:()=>{motif();return ()=>{};},
+  ticks:()=>every(1000,()=>{const s=new Date().getSeconds();tone(s%10===0?1500:1000,ctx.currentTime+0.02,s%10===0?0.18:0.07,"sine",0.05);}),
+  lounge:()=>{
+    const ch=[[146.8,174.6,220,261.6],[98,174.6,246.9,293.7],[130.8,164.8,196,246.9],[110,138.6,196,261.6]];let i=0;
+    return every(6400,()=>{const t=ctx.currentTime+0.05;ch[i++%ch.length].forEach((f,k)=>pad(f,t+k*0.07,6.6,0.022,k%2?"triangle":"sine"));});
+  },
+  farm:()=>every(7300,()=>{if(Math.random()<0.7) bell(590+Math.random()*40,0.03,0.5,bedGain);},false),
+  parish:()=>every(6800,()=>bell(196,0.07,4.5,bedGain)),
+  crowd:()=>{
+    const src=ctx.createBufferSource(), lp=ctx.createBiquadFilter(), a=ctx.createGain();
+    src.buffer=NB;src.loop=true;lp.type="bandpass";lp.frequency.value=520;lp.Q.value=0.9;a.gain.value=0.05;
+    src.connect(lp);lp.connect(a);a.connect(bedGain);src.start();
+    const h=every(1500,()=>a.gain.setTargetAtTime(S.phase>=1&&!S.returned?0.012:0.03+Math.random()*0.06,ctx.currentTime,0.8));
+    const h2=every(11000,()=>{if(S.phase===0||S.returned) slide(233,147,0.8,0.05);},false);
+    return ()=>{h();h2();try{src.stop();}catch(_){}};
+  },
+  lagoon:()=>{
+    const roots=[220,174.6,196,164.8], ivs=[1,1.25,1.5,1.875,2,2.5], pat=[0,2,3,4,3,2,5,3];
+    let step=0;
+    return every(540,()=>{
+      const t=ctx.currentTime+0.03, root=roots[Math.floor(step/8)%roots.length];
+      if(step%8===0){tone(root/2,t,3.8,"sine",0.13);pad(root,t,4.2,0.02,"sine");pad(root*1.5,t,4.2,0.015,"sine");}
+      if(Math.random()<0.85) tone(root*ivs[pat[step%8]],t,1.8,"triangle",0.07);
+      step++;
+    });
+  },
+  limbo:st=>{
+    const r=st.root||73.4;
+    return all(sustained([[r,"sine",0.07],[r*1.5,"sine",0.045],[r*2.003,"triangle",0.02],[r*3.01,"sine",0.012]]),
+      every(7600,()=>swell(4.2,620,300,0.06),false),
+      every(11000,()=>{const t=ctx.currentTime+0.1;pad(r*4,t,5,0.02,"sine");pad(r*6,t+1.2,5,0.014,"sine");},false));
+  },
+  door:()=>sustained([[41.2,"sine",0.09],[61.7,"sine",0.03]])
+};
+function startBed(st){stopBed();if(ctx&&st.bed&&BEDS[st.bed]) bedStop=BEDS[st.bed](st);}
+function stopBed(){if(bedStop){try{bedStop();}catch(_){}bedStop=null;}}
+
+/* ================= motion, drag, taps ================= */
+function cancelAnim(){if(anim){cancelAnimationFrame(anim);anim=0;}}
+function animateTo(target){
+  cancelAnim();drifting=false;
+  if(reduced){setFreq(target);return;}
+  const f0=freq, dist=Math.abs(target-f0), dur=clamp(dist/2.2,260,1400), t0=performance.now();
+  const step=now=>{
+    const p=Math.min(1,(now-t0)/dur), e=p<0.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    setFreq(f0+(target-f0)*e);
+    anim=p<1?requestAnimationFrame(step):0;
+  };
+  anim=requestAnimationFrame(step);
+}
+function afc(){
+  const n=nearest(false);
+  if(n.st&&Math.abs(n.d)<=14&&Math.abs(n.d)>0.4) animateTo(n.st.f);
+}
+function coast(v){
+  cancelAnim();
+  if(reduced||Math.abs(v)<0.05){afc();return;}
+  let last=performance.now();
+  const step=now=>{
+    const dt=Math.min(50,now-last);last=now;
+    setFreq(freq+v*dt);v*=Math.pow(0.996,dt);
+    if(Math.abs(v)>0.03&&freq>FMIN&&freq<FMAX) anim=requestAnimationFrame(step);
+    else{anim=0;afc();}
+  };
+  anim=requestAnimationFrame(step);
+}
+function seek(dir){
+  const list=band().filter(s=>!s.hidden).map(s=>s.f).sort((a,b)=>a-b);
+  let target;
+  if(dir>0) target=list.find(f=>f>freq+7); else target=list.slice().reverse().find(f=>f<freq-7);
+  if(target===undefined) target=dir>0?FMAX:FMIN;
+  animateTo(target);
+}
+let drag=null, lastTap=0;
+cv.addEventListener("pointerdown",e=>{
+  cancelAnim();
+  drag={x:e.clientX,f:freq,lx:e.clientX,lt:performance.now(),t0:performance.now(),v:0,moved:0};
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
+});
+cv.addEventListener("pointermove",e=>{
+  if(!drag) return;
+  const now=performance.now(), dt=now-drag.lt;
+  if(dt>0) drag.v=drag.v*0.6+(-(e.clientX-drag.lx)/PPK/dt)*0.4;
+  drag.moved=Math.max(drag.moved,Math.abs(e.clientX-drag.x));
+  drag.lx=e.clientX;drag.lt=now;
+  setFreq(drag.f-(e.clientX-drag.x)/PPK,true);
+});
+function endDrag(){
+  if(!drag) return;
+  const now=performance.now(), d=drag;drag=null;
+  if(d.moved<6&&now-d.t0<350){ tapDial(now); afc(); return; }
+  if(freq<FMIN||freq>FMAX){animateTo(clamp(freq,FMIN,FMAX));return;}
+  coast(now-d.lt>90?0:d.v);
+}
+cv.addEventListener("pointerup",endDrag);cv.addEventListener("pointercancel",()=>{if(drag){drag.moved=99;endDrag();}});
+let knockNoted=false;
+function tapDial(now){
+  tink();buzz(6);
+  const dbl=now-lastTap<560;lastTap=dbl?0:now;
+  const onHim=power&&currentSt&&currentSt.listener&&replaced();
+  const onDoor=!power&&currentSt&&currentSt.door;
+  if(dbl){
+    if(onHim&&!S.letIn){letHimIn();return;}
+    if(onDoor){shutDoor();return;}
+  }
+  if(onHim){
+    setTimeout(()=>{thump(0,0.8);buzz(28);if(!knockNoted){knockNoted=true;addLine("cue","(a knock, from the other side of the glass)");}},520);
+  }
+}
+cv.addEventListener("keydown",e=>{
+  const k=e.key;
+  if(k==="ArrowLeft"||k==="ArrowRight"){cancelAnim();setFreq(freq+(k==="ArrowRight"?1:-1)*(e.shiftKey?10:1));e.preventDefault();}
+  else if(k==="PageUp"){seek(1);e.preventDefault();}
+  else if(k==="PageDown"){seek(-1);e.preventDefault();}
+  else if(k==="Enter"||k===" "){tapDial(performance.now());e.preventDefault();}
+});
+function holdKey(btn,delta){
+  let h=0, h2=0;
+  const stop=()=>{clearTimeout(h);clearInterval(h2);};
+  btn.addEventListener("pointerdown",()=>{
+    cancelAnim();setFreq(Math.round(freq)+delta);
+    h=setTimeout(()=>{h2=setInterval(()=>setFreq(Math.round(freq)+delta),90);},380);
+  });
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>btn.addEventListener(ev,stop));
+  btn.addEventListener("click",e=>{if(e.detail===0){cancelAnim();setFreq(Math.round(freq)+delta);}});
+}
+holdKey($("finedn"),-1);holdKey($("fineup"),1);
+$("seekdn").addEventListener("click",()=>seek(-1));
+$("seekup").addEventListener("click",()=>seek(1));
+
+/* ================= keys that push back; screws that look ================= */
+const screws=[].slice.call(document.querySelectorAll(".screw"));
+let keyRects=[], screwPos=[], ptr=null, leanRaf=0, eatNoted=false;
+function measure(){
+  keyRects=[].slice.call(document.querySelectorAll(".key")).map(k=>{const r=k.getBoundingClientRect();return {k:k,x:r.left+r.width/2,y:r.top+r.height/2};});
+  screwPos=screws.map(s=>{const r=s.getBoundingClientRect();return {s:s,x:r.left+r.width/2,y:r.top+r.height/2};});
+}
+function lean(){
+  leanRaf=0;
+  if(S.letIn) return lookAtPointer(false);
+  lookAtPointer(true);
+}
+function lookAtPointer(turnScrews){
+  for(const o of keyRects){
+    let lx=0, ly=0;
+    if(ptr&&!reduced){
+      const dx=ptr.x-o.x, dy=ptr.y-o.y, dist=Math.hypot(dx,dy)||1, pull=Math.max(0,1-dist/170), m=pull*pull*6;
+      lx=dx/dist*m;ly=dy/dist*m;
+    }
+    o.k.style.setProperty("--lx",lx.toFixed(2)+"px");o.k.style.setProperty("--ly",ly.toFixed(2)+"px");
+  }
+  if(turnScrews&&ptr) for(const o of screwPos) o.s.style.setProperty("--a",(Math.atan2(ptr.y-o.y,ptr.x-o.x)*57.2958).toFixed(1)+"deg");
+}
+document.addEventListener("pointermove",e=>{ptr={x:e.clientX,y:e.clientY};if(!leanRaf) leanRaf=requestAnimationFrame(lean);},{passive:true});
+const releasePtr=()=>{ptr=null;if(!leanRaf) leanRaf=requestAnimationFrame(lean);};
+document.addEventListener("pointerup",e=>{if(e.pointerType!=="mouse") releasePtr();},{passive:true});
+document.addEventListener("pointercancel",releasePtr,{passive:true});
+document.addEventListener("pointerdown",e=>{
+  initAudio();
+  if(ctx&&ctx.state==="suspended") ctx.resume().catch(()=>{});
+  lastTouch=performance.now();stats.taps++;
+  if(drifting){drifting=false;updateTuning();}
+  if(S.pendingMoon) moonfall();
+  measure();ptr={x:e.clientX,y:e.clientY};if(!leanRaf) leanRaf=requestAnimationFrame(lean);
+  const k=e.target.closest&&e.target.closest(".key");
+  if(!k||k.disabled) return;
+  k.classList.add("down");thunk(1,0.85+(k.offsetLeft%7)*0.05);buzz(8);
+  const eat=k.id==="finedn"||k.id==="fineup"||k.closest(".chips")?0:setTimeout(()=>{
+    k.classList.add("eaten");gulp();buzz([30,40,70]);
+    if(!eatNoted){eatNoted=true;addLine("cue","(the key held on a moment longer than you did)");}
+  },2200);
+  const up=()=>{
+    clearTimeout(eat);
+    setTimeout(()=>k.classList.remove("down"),S.phase>=2&&!S.returned?150:50);
+    if(k.classList.contains("eaten")) setTimeout(()=>{k.classList.remove("eaten");thunk(0.5,0.6);},900);
+    window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);
+    const pEcho=k.closest(".chips")?0:S.letIn?0.45:S.returned?0.03:S.phase>=2?0.2:S.phase>=1?0.09:0.03;
+    if(Math.random()<pEcho) setTimeout(()=>{k.classList.add("ghostdown");thunk(0.4,0.7);buzz(5);setTimeout(()=>k.classList.remove("ghostdown"),170);},650+Math.random()*450);
+  };
+  window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);
+},true);
+
+/* ================= power, voice, volume ================= */
+$("power").addEventListener("click",()=>{
+  power=!power;
+  if(power){
+    const first=!S.everOn;S.everOn=true;
+    if(first) addLine("cue","Receiver on. Drag the dial or press Seek.");
+  }else stats.powerCycles++;
+  clearTimeout(lockTimer);pendingSt=null;drifting=false;
+  if(currentSt) unlock(true);
+  stopSpeech();
+  radio.classList.toggle("on",power);radio.classList.toggle("dead",deadMode());
+  $("power").setAttribute("aria-pressed",String(power));
+  $("powerlamp").classList.toggle("lit",power);
+  updateTuning();drawDial();
+});
+$("voice").addEventListener("click",()=>{voiceOn=!voiceOn;if(!voiceOn) stopSpeech();refreshVoiceUI();});
+$("volume").addEventListener("input",e=>{if(master) master.gain.setTargetAtTime(e.target.value/100,ctx.currentTime,0.03);});
+$("volume").addEventListener("change",()=>{stats.volChanges++;});
+
+/* ================= new transmissions from Claude ================= */
+$("fresh").addEventListener("click",async()=>{
+  const st=currentSt, b=$("fresh");
+  if(!st||!sampleCap||st.door) return;
+  b.disabled=true;
+  const note=addLine("cue","Requesting a new transmission from "+st.name+"…");
+  const world=st.dead?"":S.returned?" Tonight the moon, which had vanished, came back. The station is quietly relieved and mentions it in passing.":
+    S.phase>=2?" The moon vanished from the sky a little while ago with no other effect, and now things are subtly wrong: people replaced by near-identical copies, and a sense that the listener is being listened to. Keep it deadpan and eerie rather than jokey.":
+    S.phase>=1?" This evening everyone noticed that the moon has simply vanished. Nothing else has changed. The station deals with it in its own way.":"";
+  const prompt="You write scripts for an invented shortwave radio station inside a strange radio toy. Station: "+st.name+". Premise: "+st.brief+world+
+    " Write one new broadcast segment for it: 5 to 7 short spoken lines (fewer if the premise says so), deadpan, dry, absurd but consistent with the premise. No real living people, brands or current events. Output only the spoken lines, one per line, plain text, with no numbering, no stage directions, no quotation marks and no commentary.";
+  try{
+    const r=await sampleCap(prompt,{modelTier:"quick",cache:false});
+    const lines=String(r&&r.text||"").split("\n").map(s=>s.trim().replace(/^[-*\d.)\s]+/,"").replace(/[{}~]/g,"")).filter(s=>s.length>2&&s.charAt(0)!=="(").slice(0,8);
+    if(lines.length>=2){st.fresh.push(lines);note.textContent="New transmission received. It follows this segment.";}
+    else note.textContent="That came through empty. Try again.";
+  }catch(e){
+    if(e&&e.code==="not_granted"){sampleCap=null;b.hidden=true;note.textContent="New transmissions are switched off for this page.";}
+    else note.textContent="The ionosphere declined. Try again in a while.";
+  }
+  b.disabled=!currentSt||!!currentSt.door;
+});
+
+/* ================= logbook ================= */
+function chip(text,cls,fn){
+  const b=document.createElement("button"), c=document.createElement("span");
+  b.className="key "+(cls||"");c.className="cap";c.textContent=text;b.appendChild(c);
+  b.addEventListener("click",fn);return b;
+}
+function renderLog(){
+  const box=$("chips");box.textContent="";
+  const lf=LIVING.filter(s=>found.has(s.id)), df=DEAD.filter(s=>found.has(s.id));
+  $("count").textContent=lf.length+" of "+LIVING.length+(df.length?" · "+df.length+" elsewhere":"");
+  if(!lf.length&&!df.length&&!S.letIn){const em=document.createElement("em");em.textContent="Nothing logged yet.";box.appendChild(em);return;}
+  for(const st of lf) box.appendChild(chip(fmt(st.f)+" "+st.name,"",()=>animateTo(st.f)));
+  for(const st of df) box.appendChild(chip(fmt(st.f)+" "+st.name,"ghostchip",()=>animateTo(st.f)));
+  if(S.letIn) box.appendChild(chip("You · logged "+S.youAt,"hischip",()=>animateTo(LISTENER.f)));
+}
+$("reset").addEventListener("click",()=>{
+  Object.assign(S,{phase:0,letIn:false,returned:false,youAt:"",listenMs:0,moonMs:0,moonSegs:0,pendingMoon:false,noteDone:false});
+  found=new Set();obsI=0;insI=0;knockNoted=false;
+  ALL.forEach(s=>{s.moonDone=s.wrongDone=s.backDone=s.met=s.homeDone=false;s.fresh=[];});
+  LISTENER.hidden=true;LISTENER.max=0.88;LISTENER.lock=3;
+  moonA=1;moonTarget=1;setMoonlight();
+  try{localStorage.removeItem(KEY);}catch(_){}
+  session++;if(currentSt) unlock(true);pendingSt=null;
+  tape.textContent="";addLine("cue","(the night starts over)");
+  renderLog();updateTuning();drawDial();
+});
+
+/* ================= ticker ================= */
+let tickN=0;
+setInterval(()=>{
+  const dt=220;tickN++;
+  const segs=$("meter").children;
+  const live=power||deadMode();
+  const lit=live?clamp(Math.round(cur.s*9+(Math.random()-0.5)*1.2+(power&&cur.s<0.05?Math.random()*1.1:0)),0,9):0;
+  for(let i=0;i<segs.length;i++) segs[i].classList.toggle("lit",i<lit);
+  if(document.hidden) return;
+  if(live) setAudio();
+  if(power){
+    S.listenMs+=dt;
+    if(currentSt) stats.dwell[currentSt.name]=(stats.dwell[currentSt.name]||0)+dt;
+    if(S.phase===0&&!S.pendingMoon&&(livingFound()>=4||S.listenMs>270000)) S.pendingMoon=true;
+    if(S.phase===1&&(S.moonSegs>=3||S.listenMs-S.moonMs>210000)){S.phase=2;save();}
+  }
+  if(tickN%3===0) tickSkin(dt*3);
+  if(tickN%40===0&&ctx){harm++;const ch=CHORDS[harm%CHORDS.length];res.forEach((f,i)=>f.frequency.setTargetAtTime(ch[i]*2,ctx.currentTime,1.6));}
+  if(tickN%45===0) save();
+  const idle=performance.now()-lastTouch;
+  if(S.letIn){
+    $("powerlamp").classList.toggle("lit",power&&Math.floor(performance.now()/1100)%2===0);
+    const a=((performance.now()/1000)*9)%360;
+    screws.forEach(s=>s.style.setProperty("--a",a.toFixed(1)+"deg"));
+    if(power&&idle>15000&&!drag&&!anim&&Math.abs(freq-LISTENER.f)>3){
+      if(!drifting){drifting=true;updateTuning();}
+      setFreq(freq+Math.sign(LISTENER.f-freq)*Math.min(4.4,Math.abs(LISTENER.f-freq)));
+      if(Math.abs(freq-LISTENER.f)<=3){drifting=false;updateTuning();}
+    }
+  }else{
+    $("powerlamp").classList.toggle("lit",power);
+    if(S.phase>=2&&!S.returned&&idle>9000&&Math.random()<0.03) pick(screws).style.setProperty("--a",(Math.random()*360).toFixed(0)+"deg");
+  }
+},220);
+setInterval(()=>{if(!document.hidden) drawSky();},125);
+
+/* ================= boot ================= */
+function start(data){
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem(KEY)||"null");}catch(_){}
+  if(data&&data.S) saved=data.S;
+  if(saved&&typeof saved==="object"){
+    if(Array.isArray(saved.found)) saved.found.forEach(id=>found.add(id));
+    ["phase","letIn","returned","youAt","listenMs","moonMs","moonSegs","noteDone"].forEach(k=>{if(saved[k]!==undefined) S[k]=saved[k];});
+  }
+  if(data&&typeof data.freq==="number") freq=clamp(data.freq,FMIN,FMAX);
+  if(S.returned){LISTENER.hidden=false;LISTENER.max=1;LISTENER.lock=6;}
+  if(S.letIn) LISTENER.max=1;
+  if(S.phase>=1&&!S.returned){moonA=0;moonTarget=0;}
+  setMoonlight();
+  labelEls=[].slice.call(document.querySelectorAll("[data-l]"));
+  document.querySelectorAll(".keys .key,.keys2 .key,.power").forEach((k,i)=>k.style.setProperty("--bd",(-i*0.83)+"s"));
+  applySkin(0);lastDet=Math.floor(freq/10);
+  renderLog();refreshVoiceUI();setFreq(freq);drawSky();measure();
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{drawDial();measure();});
+  window.addEventListener("resize",()=>{drawDial();drawSky();measure();});
+  if("speechSynthesis" in window){try{speechSynthesis.getVoices();}catch(_){}}
+  const c=window.claude;
+  if(c&&typeof c.use==="function"){
+    c.use("tts").then(t=>{if(t){ttsCap=t;refreshVoiceUI();}}).catch(()=>{});
+    c.use("sample").then(s=>{if(s){sampleCap=s;$("fresh").hidden=false;measure();}}).catch(()=>{});
+  }
+}
+const hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot) hot.snapshot(()=>({freq:freq,S:{found:[...found],phase:S.phase,letIn:S.letIn,returned:S.returned,youAt:S.youAt,listenMs:S.listenMs,moonMs:S.moonMs,moonSegs:S.moonSegs,noteDone:S.noteDone}}));
+if(hot&&hot.ready) hot.ready(start); else start((hot&&hot.data)||{});
+/* for the curious: a handle on the night */
+window.hollowband={state:S,stats:stats,tune:f=>setFreq(f),moonfall:moonfall,tap:()=>tapDial(performance.now()),skin:n=>{skinIdx=((n%SKINS.length)+SKINS.length)%SKINS.length;skinStage="hold";skinT=0;applySkin(0);drawDial();},morph:()=>{skinT=HOLD+1;}};
+})();
+</script>
+</body>
+</html>

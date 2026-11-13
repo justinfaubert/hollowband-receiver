@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hollowband Receiver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=IM+Fell+English+SC&family=Megrim&family=PT+Sans+Narrow:wght@700&family=Saira+Extra+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2327312e'/%3E%3Crect x='5' y='9' width='22' height='10' rx='2' fill='%23f3e2b3'/%3E%3Crect x='15.5' y='8' width='1.6' height='12' fill='%23d9442c'/%3E%3Ccircle cx='9' cy='24' r='1.8' fill='%23ffb648'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/radio.css">
+</head>
+<body>
+<main class="radio" id="radio" data-text="m">
+  <canvas class="sky" id="sky" aria-hidden="true"></canvas>
+  <div class="face" id="face">
+    <div class="tex t0"></div><div class="tex t1"></div><div class="tex t2"></div><div class="tex t3"></div>
+    <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
+
+    <header class="plate">
+      <div class="brand"><span class="maker" data-l="brand">HOLLOWBAND</span><span class="model" data-l="model">Shortwave receiver, model 9</span></div>
+      <button id="cog" class="key icon" aria-label="Mixer and settings" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg></button>
+      <button id="power" class="key power" aria-pressed="false" aria-label="Power"><span class="cap"><i class="lampdot" id="powerlamp"></i><span data-l="power">Power</span></span></button>
+    </header>
+
+    <div class="dialwrap">
+      <canvas id="dial" tabindex="0" role="slider" aria-label="Tuning dial, kilohertz" aria-valuemin="3000" aria-valuemax="17000" aria-valuenow="6000"></canvas>
+    </div>
+
+    <div class="readrow">
+      <div class="readout"><span id="freq">6,000</span><small data-l="khz">kHz</small></div>
+      <div class="sig"><span class="lbl" data-l="signal">Signal</span><canvas class="eye" id="eye" role="img" aria-label="Signal strength"></canvas></div>
+    </div>
+    <div class="status" id="status" aria-live="polite">Receiver off</div>
+
+    <div class="tapewrap">
+      <section class="tape" id="tape">
+        <p class="hdr">Operating notes</p>
+        <ol id="notelist"></ol>
+      </section>
+      <button class="latest" id="latest" hidden>Latest &darr;</button>
+    </div>
+
+    <form class="callrow" id="callrow" hidden>
+      <label for="calltext" hidden>Say something to the station</label>
+      <input id="calltext" type="text" maxlength="300" autocomplete="off" placeholder="Say something to the station">
+      <button type="button" class="key" id="dictate" aria-label="Dictate" hidden><span class="cap">Speak</span></button>
+      <button type="submit" class="key" id="callsend"><span class="cap">Send</span></button>
+    </form>
+
+    <div class="keys">
+      <button class="key" id="seekdn" aria-label="Seek down to the next station"><span class="cap"><span>&#9664;&#9664;</span><span data-l="seek">Seek</span></span></button>
+      <button class="key" id="finedn" aria-label="Tune down one kilohertz"><span class="cap">&minus; 1</span></button>
+      <button class="key" id="fineup" aria-label="Tune up one kilohertz"><span class="cap">+ 1</span></button>
+      <button class="key" id="seekup" aria-label="Seek up to the next station"><span class="cap"><span data-l="seek">Seek</span><span>&#9654;&#9654;</span></span></button>
+    </div>
+    <div class="keys2">
+      <button class="key" id="next" aria-label="Skip to the next item on this station" disabled><span class="cap"><span data-l="next">Next</span></span></button>
+      <button class="key" id="call" aria-label="Call in to the station"><span class="cap"><span data-l="call">Call in</span></span></button>
+      <button class="key" id="onair" aria-label="Go on air with your microphone" hidden><span class="cap"><i class="lampdot" id="airlamp"></i><span data-l="onair">On air</span></span></button>
+      <label class="vol" for="volume"><span data-l="vol">Vol</span><input id="volume" type="range" min="0" max="100" value="70"></label>
+    </div>
+
+    <section class="log" id="log">
+      <button class="logtoggle" id="logtoggle" aria-expanded="false" aria-controls="chips"><span><i>&#9656;</i><span data-l="logbook">Logbook</span></span><span id="count">0 of 10</span></button>
+      <div class="chips" id="chips"><em>Nothing logged yet.</em></div>
+    </section>
+  </div>
+
+  <aside class="drawer" id="drawer" hidden aria-label="Mixer and settings">
+    <h2>Mixer <button class="key" id="drawer-close"><span class="cap">Close</span></button></h2>
+    <div class="row"><label for="mix-voice">Voices</label><input id="mix-voice" type="range" min="0" max="150" value="100"></div>
+    <div class="row"><label for="mix-music">Music</label><input id="mix-music" type="range" min="0" max="150" value="100"></div>
+    <div class="row"><label for="mix-static">Static</label><input id="mix-static" type="range" min="0" max="150" value="100"></div>
+    <label class="check"><input type="checkbox" id="opt-voice" checked>Spoken voices (off: the tape still prints everything)</label>
+
+    <h3>The set</h3>
+    <div class="row"><label>Tape text</label><div class="seg"><button class="key" data-text="s"><span class="cap">Small</span></button><button class="key" data-text="m"><span class="cap">Medium</span></button><button class="key" data-text="l"><span class="cap">Large</span></button></div></div>
+    <label class="check"><input type="checkbox" id="opt-still">Hold the set still (stop it becoming other sets)</label>
+    <label class="check"><input type="checkbox" id="opt-haptics" checked>Vibration, where the device has it</label>
+    <div class="row"><button class="key" id="notes"><span class="cap">Print the operating notes</span></button><button class="key" id="fresh" hidden disabled><span class="cap">New transmission</span></button></div>
+
+    <h3>Your station</h3>
+    <p id="medialine">Nothing yet. Add music and it gets its own place on the dial.</p>
+    <div class="row"><span class="key filebtn"><span class="cap">Add tracks</span><input id="addtracks" type="file" accept="audio/*" multiple aria-label="Add your own tracks"></span><button class="key" id="cleartracks"><span class="cap">Clear</span></button></div>
+    <label class="check"><input type="checkbox" id="opt-monitor">Hear myself through the set when on air (headphones only)</label>
+    <p>Keys: space is power, left and right tune, up and down seek, N skips. Tap the dial glass to knock.</p>
+    <button class="linkish" id="reset">Start the night over</button>
+  </aside>
+</main>
+<script src="js/script.js"></script>
+<script src="js/voices.js"></script>
+<script src="js/tracks.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/radio.js"></script>
+</body>
+</html>
