@@ -155,7 +155,7 @@ var living=[
   "Kee^p your hands in your lap, sweetheart. I'll stay on with you."
  ],
  back:"Line two says it's back, and it's parked legally this time. Go to bed, all of you. Not you. You stay.",
- calls:["Line seven, you're on the air. I can hear you breathing, honey, but the words aren't making the trip. That's all right. Some nights they don't.","Stay on the line. I'll talk, and you nod. I'll know."]},
+ calls:["Line two. Mister Pruitt, is that you? No. It's his number, but it isn't his breathing. Well. Hello, whoever has his room.","Is the goose all right? He always said she'd outlast him. Stay on the line, honey. I'll talk, and you nod. I'll know."]},
 
 {id:"farm",f:7335,name:"Lower Orchard Stock & Fodder Report",short:"the Stock and Fodder Report",cast:"farm",bed:"farm",scale:[55,59,62,64,67],
  brief:"A brisk rural market report for impossible produce and livestock (glass turnips, thunder wheat, baled fog, reversible sheep), read as flatly as real commodity prices. Always ends with 'Mind the gate.'",
@@ -422,6 +422,7 @@ var listener={id:"engineer",f:16661,name:"The Night Engineer",short:"me",cast:"e
   "Test, test. Still here. So are you, apparently.",
   "I logged a listener last night. First one in the book since the old king. I wrote down, one listener, possibly a goose.",
   "From up the mast you can see all the other stations' lights. Dolores leaves hers on till dawn. The Clerk doesn't have one. Never has.",
+  "There's a lamp on in the top room at Lantern Row tonight. First time since Pruitt. Evening, whoever you are.",
   "The Coastal Service lot make the weather up, you know. They've got a window, but it faces a wall.",
   "Anyway. I'll put the kettle on the output stage. Warms up lovely.",
   "If you come by again, tap twice on the dial. I won't hear it. But tap anyway."
@@ -458,7 +459,11 @@ var listener={id:"engineer",f:16661,name:"The Night Engineer",short:"me",cast:"e
   "It's {time} where you are. I can see that from here. I can see most things from here, now the light's off.",
   "They say the moon's gone. Nothing's gone. A thing can stop shining and still be there. It's easier to listen with the light off.",
   "Something up here was never an engineer. I wouldn't worry about which of us.",
-  {if:"voiceon",t:"You've got the voices switched on. That's kind. Most people only read me.",else:"You've switched the voices off. I can still hear yours."}
+  {if:"voiceon",t:"You've got the voices switched on. That's kind. Most people only read me.",else:"You've switched the voices off. I can still hear yours."},
+  {if:"lampon",t:"You've got the lamp on. I can see you better with it on. Thank you.",else:"You've put the lamp out. That's all right. I don't need it."},
+  {if:"windowopen",t:"You've opened the window. Good. I was going to ask.",else:"You keep the window shut. Sensible. Things get in."},
+  {if:"kettle",t:"You've had the kettle on. Make one for me. I'll be in shortly.",else:"You haven't put the kettle on once. You'll want something warm, later."},
+  "Your goose doesn't care for me. Geese are funny about heights."
  ],
  inside:[
   "I'm not on this frequency any more. I'm on all of them. Have a turn of the dial. You'll see.",
@@ -541,7 +546,7 @@ var dead=[
 ];
 
 var notes=[
- "Press Power. Sound starts then.",
+ "Press Power. Sound starts then. Lean back to see the room.",
  "Drag the dial sideways. It has weight, and it plays as it turns.",
  "Stations keep to the marked metre bands, mostly. The static thins as you close on one.",
  "What is spoken also prints here. The cog opens the mixer and the settings.",

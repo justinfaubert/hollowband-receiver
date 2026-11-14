@@ -2,7 +2,7 @@
    State and story, tuning, the tape, the sky, the materials the set is made of, and everything you can touch. */
 (function(){
 "use strict";
-const HB=window.HB=window.HB||{}, A=HB.sound, D=window.HB_SCRIPT;
+const HB=window.HB=window.HB||{}, A=HB.sound, K=HB.sky, D=window.HB_SCRIPT;
 const FMIN=3000, FMAX=17000, PPK=0.5;
 const BANDS=[[90,3200,3400],[75,3900,4000],[60,4750,5060],[49,5900,6200],[41,7200,7450],[31,9400,9900],[25,11600,12100],[22,13570,13870],[19,15100,15800]];
 const $=id=>document.getElementById(id);
@@ -24,8 +24,10 @@ function moonName(){
 
 /* ================= preferences and state ================= */
 const PKEY="hollowband-prefs", KEY="hollowband-night";
-const prefs={vol:70,voice:100,music:100,static:100,voiceOn:true,text:"m",still:false,haptics:true,freq:6000,logOpen:window.innerHeight>780,yoursF:0,monitor:false};
+const prefs={v:0,vol:70,voice:100,music:100,static:100,room:100,voiceOn:true,text:"m",still:false,haptics:true,freq:6000,logOpen:window.innerHeight>780,yoursF:0,monitor:false};
 try{Object.assign(prefs,JSON.parse(localStorage.getItem(PKEY)||"{}"));}catch(_){}
+/* the mix was rebalanced (voices now sit under the music): start everyone from the new centre once */
+if(prefs.v<2){prefs.voice=100;prefs.music=100;prefs.static=100;prefs.room=100;prefs.v=2;}
 const savePrefs=()=>{try{localStorage.setItem(PKEY,JSON.stringify(prefs));}catch(_){}};
 const buzz=p=>{if(!prefs.haptics) return;try{navigator.vibrate&&navigator.vibrate(p);}catch(_){}};
 
@@ -34,7 +36,7 @@ const stats={taps:0,powerCycles:0,prevShort:null,lastShort:null,dwell:{},spoke:f
 let found=new Set();
 let freq=prefs.freq, power=false, currentSt=null, pendingSt=null, lockTimer=0, session=0, anim=0, drifting=false;
 let ttsCap=null, sampleCap=null, dictCap=null, synthDead=!("speechSynthesis" in window), cur={st:null,d:1e9,s:0};
-let lastTouch=performance.now(), moonA=1, moonTarget=1, lastDet=600, bedSt=null, bedTimer=0, speakInside=false, ptr=null, sigSmooth=0;
+let lastTouch=performance.now(), lastDet=600, bedSt=null, bedTimer=0, speakInside=false, ptr=null, sigSmooth=0, audioReady=false, skyLvl=0;
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify({found:[...found],phase:S.phase,letIn:S.letIn,returned:S.returned,youAt:S.youAt,listenMs:S.listenMs,moonMs:S.moonMs,moonSegs:S.moonSegs,noteDone:S.noteDone}));}catch(_){}
 }
@@ -68,7 +70,11 @@ const COND={
   loud:()=>prefs.vol>=60,
   cycled:()=>stats.powerCycles>0,
   haslongest:()=>!!longest(),
-  voiceon:()=>prefs.voiceOn
+  voiceon:()=>prefs.voiceOn,
+  /* he can see into the room */
+  lampon:()=>!!(HB.room&&HB.room.state.lamp),
+  windowopen:()=>!!(HB.room&&HB.room.state.open),
+  kettle:()=>!!(HB.room&&HB.room.state.boiled)
 };
 function slotValue(k,item){
   const d=new Date();
@@ -95,7 +101,7 @@ function listenerSeg(st){
   return a;
 }
 function letHimIn(){
-  S.letIn=true;S.youAt=clock();LISTENER.max=1;save();
+  S.letIn=true;S.youAt=clock();LISTENER.max=1;save();HB.emit("phase","letin");
   LISTENER.fresh.unshift(mk("letIn",D.listener.letIn,LISTENER.castDouble));
   session++;stopSpeech();
   addLine("cue","(two knocks on the glass)");
@@ -111,7 +117,7 @@ function shutDoor(){
   setTimeout(()=>{
     addLine("cue","(something answers once, and stops)");A.thump(0,0.5);
     setTimeout(()=>{
-      moonTarget=1;setMoonlight();restoreMoon();
+      K.setMoon(1);setMoonlight();restoreMoon();HB.emit("phase","returned");
       addLine("note","The door is shut.");
       A.moonChord();
       if(currentSt) unlock(true);
@@ -121,7 +127,7 @@ function shutDoor(){
 }
 function moonfall(){
   S.pendingMoon=false;S.phase=1;S.moonMs=S.listenMs;
-  moonA=0;moonTarget=0;setMoonlight();A.moonGone();save();
+  K.setMoon(0,true);setMoonlight();A.moonGone();save();HB.emit("phase","moonfall");
   setTimeout(()=>{
     if(S.noteDone||S.phase<1) return;
     S.noteDone=true;save();
@@ -129,7 +135,7 @@ function moonfall(){
     addLine("note","6. When switched off, the receiver is not off.");
   },45000);
 }
-function setMoonlight(){document.documentElement.style.setProperty("--moonlight",String(moonTarget));}
+function setMoonlight(){document.documentElement.style.setProperty("--moonlight",String(K.moonTarget));}
 /* the word goes out of the record, a line at a time */
 const erased=[];
 function eraseMoon(){
@@ -229,115 +235,20 @@ function lookedAway(){
   skinT=0;applySkin(STAGES[stageI][1]);drawDial();
 }
 
-/* ================= sky ================= */
-const sky=$("sky"), sg=sky.getContext("2d"), stars=[];
-for(let i=0;i<150;i++) stars.push({x:Math.random(),y:Math.pow(Math.random(),1.3)*0.78,a:0.3+Math.random()*0.7,s:0.6+Math.random()*2.2,p:Math.random()*6.28,r:Math.random()<0.1?1.7:1});
-const figures=[];for(let i=0;i<16;i++){let b=-1,bd=9;for(let j=0;j<40;j++){if(j===i) continue;const dx=stars[i].x-stars[j].x,dy=stars[i].y-stars[j].y,dd=dx*dx+dy*dy;if(dd<bd){bd=dd;b=j;}}figures.push([i,b]);}
-const hills=[];for(let i=0;i<=32;i++){const x=i/32;hills.push(x<0.3?0.9:0.86-0.12*Math.sin((x-0.3)*4.2)-0.05*Math.sin(x*17)-0.03*Math.sin(x*41));}
-const hillY=x=>{const f=clamp(x,0,1)*32, i=Math.floor(f), t=f-i;return lerp(hills[i],hills[Math.min(32,i+1)],t);};
-const LIGHTS={dolores:[0.47,"#ffcf8a"],farm:[0.57,"#ffe08a"],kettle:[0.69,"#f4f7ff"],bureau:[0.4,"#ffe9c0"],vellish:[0.63,"#cfe4ff"],parish:[0.78,"#ffd9a0"],lagoon:[0.52,"#ff9ec4"]};
-let shoot=null, skyLvl=0;
-function drawSky(){
-  const r=sky.getBoundingClientRect(), W=r.width, H=r.height, dpr=window.devicePixelRatio||1;
-  if(!W) return;
-  if(sky.width!==Math.round(W*dpr)||sky.height!==Math.round(H*dpr)){sky.width=Math.round(W*dpr);sky.height=Math.round(H*dpr);}
-  sg.setTransform(dpr,0,0,dpr,0,0);
-  const t=performance.now()/1000, dm=deadMode();
-  if(moonA<moonTarget) moonA=Math.min(moonTarget,moonA+0.012);
-  skyLvl=lerp(skyLvl,A.level(),0.4);
-  const bg=sg.createLinearGradient(0,0,0,H);
-  if(dm){bg.addColorStop(0,"#0a0d1c");bg.addColorStop(1,"#1c2140");}
-  else{bg.addColorStop(0,rgb([5+6*moonA,8+8*moonA,16+14*moonA]));bg.addColorStop(1,rgb([14+12*moonA,20+14*moonA,34+18*moonA]));}
-  sg.fillStyle=bg;sg.fillRect(0,0,W,H);
-  /* the dial turns the sky */
-  const slide=((freq-FMIN)/(FMAX-FMIN))*0.7+t*0.0006;
-  const sx=s=>(((s.x+slide)%1)+1)%1*W;
-  if(dm){
-    sg.strokeStyle="rgba(190,205,255,.22)";sg.lineWidth=0.7;sg.beginPath();
-    for(const f of figures){const a=stars[f[0]], b=stars[f[1]], ax=sx(a), bx=sx(b);if(Math.abs(ax-bx)<W*0.25){sg.moveTo(ax,a.y*H);sg.lineTo(bx,b.y*H);}}
-    sg.stroke();
-  }
-  for(const s of stars){
-    sg.globalAlpha=s.a*(0.55+0.45*Math.sin(t*s.s+s.p))*(dm?1:1-0.35*moonA);
-    sg.fillStyle=dm?"#c9d4ff":"#dfe8ff";sg.fillRect(sx(s),s.y*H,s.r,s.r);
-  }
-  sg.globalAlpha=1;
-  if(!shoot&&Math.random()<0.004) shoot={x:Math.random()*W*0.8+W*0.1,y:Math.random()*H*0.3,t:0};
-  if(shoot){
-    shoot.t+=0.12;const k=shoot.t;
-    sg.strokeStyle="rgba(235,240,255,"+(0.8*(1-k))+")";sg.lineWidth=1.2;sg.beginPath();
-    sg.moveTo(shoot.x+k*70,shoot.y+k*26);sg.lineTo(shoot.x+k*70-22,shoot.y+k*26-8);sg.stroke();
-    if(k>=1) shoot=null;
-  }
-  const mcx=W*0.2, mcy=H*0.36, R=H*0.2;
-  if(moonA>0.01){
-    const ph=moonPhase(), halo=sg.createRadialGradient(mcx,mcy,R*0.6,mcx,mcy,R*4.4);
-    halo.addColorStop(0,"rgba(200,218,255,"+(0.3*moonA)+")");halo.addColorStop(1,"rgba(200,218,255,0)");
-    sg.fillStyle=halo;sg.fillRect(mcx-R*4.6,mcy-R*4.6,R*9.2,R*9.2);
-    sg.globalAlpha=moonA;sg.fillStyle="#3a4660";sg.beginPath();sg.arc(mcx,mcy,R,0,6.2832);sg.fill();
-    sg.save();let p=ph;
-    if(p>0.5){sg.translate(mcx,0);sg.scale(-1,1);sg.translate(-mcx,0);p=1-p;}
-    const rx=Math.max(0.5,R*Math.abs(Math.cos(6.2832*p)));
-    sg.fillStyle="#f2f1e4";sg.beginPath();sg.arc(mcx,mcy,R,-1.5708,1.5708,false);sg.ellipse(mcx,mcy,rx,R,0,1.5708,4.7124,p<0.25);sg.closePath();sg.fill();
-    sg.restore();sg.globalAlpha=1;
-  }
-  /* the sea, while there is a tide to bring it in */
-  const out=S.phase>=1&&!S.returned, seaTop=H*(out?0.93:0.84), shore=W*0.34;
-  sg.fillStyle="#0a0e16";sg.fillRect(0,H*0.84,shore,H*0.16);
-  sg.fillStyle=dm?"#141a34":rgb([10+10*moonA,16+14*moonA,28+20*moonA]);sg.fillRect(0,seaTop,shore,H-seaTop);
-  if(moonA>0.05){
-    sg.fillStyle="rgba(230,236,255,"+(0.5*moonA)+")";
-    for(let i=0;i<5;i++){const yy=seaTop+2+i*((H-seaTop-3)/5), ww=(3+i*2.2)*(0.7+0.3*Math.sin(t*2+i*1.7));sg.fillRect(mcx-ww/2,yy,ww,1);}
-  }
-  /* Lantern Rock: the light is working */
-  const lx=W*0.07, ly=H*0.84;
-  sg.fillStyle="#04060a";sg.beginPath();sg.moveTo(lx-9,ly+3);sg.lineTo(lx-3,ly-2);sg.lineTo(lx+4,ly-2);sg.lineTo(lx+11,ly+3);sg.closePath();sg.fill();
-  sg.fillRect(lx-1.6,ly-13,3.2,12);
-  const sweep=(t%5)/5, beam=Math.max(0,1-Math.abs(sweep-0.5)*6);
-  if(!dm){
-    sg.fillStyle="rgba(255,236,170,"+(0.35+0.65*beam)+")";sg.beginPath();sg.arc(lx,ly-14,1.6+beam*1.2,0,6.2832);sg.fill();
-    if(beam>0.05){const gr=sg.createRadialGradient(lx,ly-14,1,lx,ly-14,40);gr.addColorStop(0,"rgba(255,236,170,"+(0.3*beam)+")");gr.addColorStop(1,"rgba(255,236,170,0)");sg.fillStyle=gr;sg.fillRect(lx-40,ly-54,80,80);}
-  }
-  /* the land, and a light for everyone you have found. The Clerk doesn't have one. Never has. */
-  sg.fillStyle="#04060a";sg.beginPath();sg.moveTo(W*0.28,H);
-  for(let i=9;i<=32;i++) sg.lineTo(i/32*W,hills[i]*H);
-  sg.lineTo(W,H);sg.closePath();sg.fill();
-  if(!dm){
-    for(const id in LIGHTS){
-      if(!found.has(id)) continue;
-      const L=LIGHTS[id], x=L[0]*W, y=hillY(L[0])*H-1.5, on=currentSt&&currentSt.id===id, a=on?0.75+0.25*skyLvl:0.55;
-      if(id==="parish"){sg.fillStyle="#04060a";sg.beginPath();sg.moveTo(x-2.5,y+2);sg.lineTo(x,y-9);sg.lineTo(x+2.5,y+2);sg.closePath();sg.fill();}
-      if(id==="bureau"){sg.fillStyle="#04060a";sg.fillRect(x-2,y-8,4,10);}
-      const yy=id==="parish"?y-3:id==="bureau"?y-6:y;
-      sg.globalAlpha=a;sg.fillStyle=L[1];
-      if(id==="kettle"){sg.fillRect(x-5,y-5,2,2);sg.fillRect(x+3,y-5,2,2);}
-      else sg.fillRect(x-1,yy-1,2,2);
-      if(on){const gr=sg.createRadialGradient(x,yy,0.5,x,yy,9+8*skyLvl);gr.addColorStop(0,L[1]);gr.addColorStop(1,"rgba(0,0,0,0)");sg.globalAlpha=0.35+0.4*skyLvl;sg.fillStyle=gr;sg.fillRect(x-18,yy-18,36,36);}
-      sg.globalAlpha=1;
-    }
-    if(hasYours()){
-      const x=W*0.86, y=hillY(0.86)*H;
-      sg.strokeStyle="#04060a";sg.lineWidth=1.2;sg.beginPath();sg.moveTo(x,y);sg.lineTo(x,y-11);sg.stroke();
-      sg.fillStyle=A.onAir()?"#ff5a48":"#7dffb0";sg.globalAlpha=A.onAir()||(currentSt&&currentSt.you)?1:0.6;sg.beginPath();sg.arc(x,y-12,1.6,0,6.2832);sg.fill();sg.globalAlpha=1;
-    }
-  }
-  const mx=W-34, top=H*0.2;
-  sg.strokeStyle="#04060a";sg.lineWidth=1.4;sg.beginPath();
-  sg.moveTo(mx-7,H);sg.lineTo(mx,top);sg.lineTo(mx+7,H);
-  for(let k=1;k<5;k++){const y=top+(H-top)*k/5, w=7*k/5;sg.moveTo(mx-w,y);sg.lineTo(mx+w,y);}
-  sg.stroke();
-  const lampOn=dm||S.letIn?false:(replaced()?true:Math.floor(t/1.1)%2===0);
-  if(lampOn){
-    sg.fillStyle="#ff5a48";sg.beginPath();sg.arc(mx,top,2.1,0,6.2832);sg.fill();
-    sg.fillStyle="rgba(255,90,72,.22)";sg.beginPath();sg.arc(mx,top,6,0,6.2832);sg.fill();
-  }
+/* ================= sky (drawn by sky.js; this is what it needs to know) ================= */
+const sky=$("sky");
+function skyState(kind){
+  const w=HB.weather||{};
+  return {kind:kind,freq:freq,dead:deadMode(),phase:S.phase,returned:S.returned,letIn:S.letIn,replaced:replaced(),found:found,currentId:currentSt&&currentSt.id,
+    yours:hasYours(),onAir:A.onAir(),lvl:skyLvl,rain:w.rain||0,fog:w.fog||0,wind:w.wind||0};
 }
+function drawSky(){K.draw(sky,skyState("strip"));}
 
 /* ================= the indicator: lamps, a magic eye, a needle, an eye ================= */
 const eye=$("eye"), eg=eye.getContext("2d");
 let blink=0;
 function drawEye(){
-  const r=eye.getBoundingClientRect(), W=r.width, H=r.height, dpr=window.devicePixelRatio||1;
+  const r=eye.getBoundingClientRect(), W=eye.clientWidth, H=eye.clientHeight, dpr=window.devicePixelRatio||1;
   if(!W||!SK) return;
   if(eye.width!==Math.round(W*dpr)||eye.height!==Math.round(H*dpr)){eye.width=Math.round(W*dpr);eye.height=Math.round(H*dpr);}
   eg.setTransform(dpr,0,0,dpr,0,0);eg.clearRect(0,0,W,H);
@@ -401,7 +312,7 @@ function drawEye(){
 /* ================= dial ================= */
 const radio=$("radio"), cv=$("dial"), g=cv.getContext("2d"), tape=$("tape");
 function drawDial(){
-  const r=cv.getBoundingClientRect(), W=r.width, H=r.height, dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth, H=cv.clientHeight, dpr=window.devicePixelRatio||1;
   if(!W||!SK) return;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
   g.setTransform(dpr,0,0,dpr,0,0);
@@ -515,14 +426,15 @@ function commitLock(st){
   if(currentSt) unlock(true);
   stats.prevShort=stats.lastShort||null;stats.lastShort=st.listener?null:st.short||null;
   currentSt=st;session++;
-  if(!st.door&&!found.has(st.id)){found.add(st.id);save();renderLog();}
+  if(!st.door&&!found.has(st.id)){found.add(st.id);save();renderLog();HB.emit("found",st);}
   if(!st.door) addLine("hdr"+(st.dead?" ghost":""),fmt(st.f)+" kHz · "+st.name);
   if(st.listener&&!S.returned&&!S.letIn) addLine("cue","Weak signal. Copy is poor.");
   A.startBed(st);setAudio();setStatus();
+  HB.emit("lock",st);
   if(!st.you) runStation(st,session);
 }
 function unlock(quiet){
-  currentSt=null;session++;stopSpeech();
+  currentSt=null;session++;stopSpeech();HB.emit("unlock");
   if(!quiet&&power) addLine("cue",drifting?"(the dial is moving)":"Signal lost.");
   setStatus();
 }
@@ -631,12 +543,15 @@ async function sayLine(item,st,id,cls){
   if(id!==session) return;
   const kind=cls||(st.dead?"ghost":(st.listener&&replaced()?"his":"say"));
   const el=addLine(kind,"");
-  const words=text.split(" "), spoken=text.replace(/\^/g,""), rate=st.dead?0.94:1;
-  const clipMs=prefs.voiceOn&&R.parts?A.duration(R.parts,rate):0;
-  const dur=clipMs||words.length*340+300;
-  const speech=!prefs.voiceOn?Promise.resolve():clipMs?A.say(R.parts,{rate:rate}):fallbackSpeak(spoken,st,dur);
+  const words=text.split(" "), spoken=text.replace(/\^/g,"");
+  const vo={rate:st.dead?0.94:1,dead:!!st.dead,double:!st.dead&&!st.listener&&HB.mood()==="wrong"&&Math.random()<0.35};
+  const clipMs=prefs.voiceOn&&R.parts?A.duration(R.parts,vo):0;
+  const dur=clipMs||words.length*340+300, lead=clipMs&&st.dead?Math.min(1000,dur*0.3):0;
+  HB.emit("line",{text:spoken,st:st,kind:kind,dur:dur});
+  const speech=!prefs.voiceOn?Promise.resolve():clipMs?A.say(R.parts,vo):fallbackSpeak(spoken,st,dur);
   const typing=(async()=>{
-    const stepMs=dur*0.92/words.length;
+    const stepMs=(dur-lead)*0.92/words.length;
+    if(lead) await wait(lead);
     for(let i=0;i<words.length;i++){
       if(id!==session) return;
       appendWord(el,words[i],i>0);scrollTape();
@@ -697,7 +612,7 @@ HB.onTrack=(name,kind)=>{if(currentSt&&currentSt.you) addLine("cue",(kind==="cli
 async function callIn(text,clip){
   if(text) addLine("you","You, on the air: "+text);
   else if(clip) addLine("you","(you, on the air, "+Math.round(clip.secs)+" seconds)");
-  stats.spoke=true;
+  stats.spoke=true;HB.emit("call",currentSt);
   if(clip) placeYours();
   const st=currentSt;
   if(!st){ if(power&&!clip) addLine("cue","(nobody is on this frequency. It went out anyway.)"); return; }
@@ -815,7 +730,7 @@ function tapDial(now){
     if(onHim&&!S.letIn){letHimIn();return;}
     if(onDoor){shutDoor();return;}
   }
-  if(onHim) setTimeout(()=>{A.thump(0,0.8);buzz(28);if(!knockNoted){knockNoted=true;addLine("cue","(a knock, from the other side of the glass)");}},520);
+  if(onHim) setTimeout(()=>{A.thump(0,0.8);buzz(28);HB.emit("knock");if(!knockNoted){knockNoted=true;addLine("cue","(a knock, from the other side of the glass)");}},520);
 }
 function holdKey(btn,delta){
   let h=0, h2=0;
@@ -857,7 +772,8 @@ document.addEventListener("pointermove",e=>{ptr={x:e.clientX,y:e.clientY};askLea
 document.addEventListener("pointerup",e=>{if(e.pointerType!=="mouse"){ptr=null;askLean();}},{passive:true});
 document.addEventListener("pointercancel",()=>{ptr=null;askLean();},{passive:true});
 document.addEventListener("pointerdown",e=>{
-  A.init();A.resume();
+  if(A.init()&&!audioReady){audioReady=true;A.setVolume(prefs.vol/100);HB.emit("audio");}
+  A.resume();
   lastTouch=performance.now();stats.taps++;
   if(drifting){drifting=false;updateTuning();}
   if(S.pendingMoon) moonfall();
@@ -894,20 +810,21 @@ function setPower(on){
   $("power").setAttribute("aria-pressed",String(power));
   $("powerlamp").classList.toggle("lit",power);
   updateTuning();drawDial();
+  HB.emit("power",power);
 }
 $("power").addEventListener("click",()=>setPower(!power));
 $("volume").addEventListener("input",e=>{prefs.vol=+e.target.value;A.setVolume(prefs.vol/100);});
 $("volume").addEventListener("change",savePrefs);
 function applyPrefs(){
   $("volume").value=prefs.vol;A.setVolume(prefs.vol/100);
-  A.setMix({voice:prefs.voice/100,music:prefs.music/100,static:prefs.static/100});
-  ["voice","music","static"].forEach(k=>{$("mix-"+k).value=prefs[k];});
+  A.setMix({voice:prefs.voice/100,music:prefs.music/100,static:prefs.static/100,room:prefs.room/100});
+  ["voice","music","static","room"].forEach(k=>{$("mix-"+k).value=prefs[k];});
   $("opt-voice").checked=prefs.voiceOn;$("opt-still").checked=prefs.still;$("opt-haptics").checked=prefs.haptics;$("opt-monitor").checked=prefs.monitor;
   radio.dataset.text=prefs.text;
   document.querySelectorAll(".drawer [data-text]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.text===prefs.text)));
   $("log").classList.toggle("open",!!prefs.logOpen);$("logtoggle").setAttribute("aria-expanded",String(!!prefs.logOpen));
 }
-["voice","music","static"].forEach(k=>$("mix-"+k).addEventListener("input",e=>{prefs[k]=+e.target.value;A.setMix({voice:prefs.voice/100,music:prefs.music/100,static:prefs.static/100});savePrefs();}));
+["voice","music","static","room"].forEach(k=>$("mix-"+k).addEventListener("input",e=>{prefs[k]=+e.target.value;A.setMix({voice:prefs.voice/100,music:prefs.music/100,static:prefs.static/100,room:prefs.room/100});savePrefs();}));
 $("opt-voice").addEventListener("change",e=>{prefs.voiceOn=e.target.checked;if(!prefs.voiceOn) stopSpeech();savePrefs();});
 $("opt-still").addEventListener("change",e=>{prefs.still=e.target.checked;savePrefs();});
 $("opt-haptics").addEventListener("change",e=>{prefs.haptics=e.target.checked;savePrefs();});
@@ -987,11 +904,12 @@ $("reset").addEventListener("click",()=>{
   found=new Set(hasYours()?["yours"]:[]);obsI=0;insI=0;knockNoted=false;erased.length=0;
   ALL.forEach(s=>{s.moonDone=s.wrongDone=s.backDone=s.met=s.homeDone=false;s.fresh=[];});
   LISTENER.hidden=true;LISTENER.max=0.88;LISTENER.lock=3;
-  moonA=1;moonTarget=1;setMoonlight();
+  K.setMoon(1,true);setMoonlight();
   try{localStorage.removeItem(KEY);}catch(_){}
   session++;if(currentSt) unlock(true);pendingSt=null;
   tape.textContent="";addLine("cue","(the night starts over)");printNotes();
   renderLog();updateTuning();drawDial();openDrawer(false);
+  HB.emit("phase","reset");
 });
 
 /* ================= keyboard ================= */
@@ -1018,7 +936,7 @@ setInterval(()=>{
     S.listenMs+=dt;
     if(currentSt) stats.dwell[currentSt.id]=(stats.dwell[currentSt.id]||0)+dt;
     if(S.phase===0&&!S.pendingMoon&&(livingFound()>=4||S.listenMs>270000)) S.pendingMoon=true;
-    if(S.phase===1&&(S.moonSegs>=3||S.listenMs-S.moonMs>210000)){S.phase=2;save();}
+    if(S.phase===1&&(S.moonSegs>=3||S.listenMs-S.moonMs>210000)){S.phase=2;save();HB.emit("phase","wrong");}
   }
   if(tickN%3===0) tickSkin(dt*3);
   if(tickN%40===0) A.nextChord();
@@ -1039,10 +957,10 @@ setInterval(()=>{
     if(S.phase>=2&&!S.returned&&idle>9000&&Math.random()<0.03) pick(screws).style.setProperty("--a",(Math.random()*360).toFixed(0)+"deg");
   }
 },220);
-setInterval(()=>{if(!document.hidden){drawSky();drawEye();}},100);
+setInterval(()=>{skyLvl=lerp(skyLvl,A.level(),0.4);if(!document.hidden&&HB.view==="set"){drawSky();drawEye();}},100);
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden){hiddenAt=Date.now();save();savePrefs();}
-  else if(hiddenAt&&Date.now()-hiddenAt>20000) lookedAway();
+  else{A.resume();if(hiddenAt&&Date.now()-hiddenAt>20000) lookedAway();}
 });
 
 /* ================= boot ================= */
@@ -1058,7 +976,7 @@ function start(data){
   freq=clamp(freq||6000,FMIN,FMAX);
   if(S.returned){LISTENER.hidden=false;LISTENER.max=1;LISTENER.lock=6;}
   if(S.letIn) LISTENER.max=1;
-  if(S.phase>=1&&!S.returned){moonA=0;moonTarget=0;}
+  if(S.phase>=1&&!S.returned) K.setMoon(0,true);
   setMoonlight();
   labelEls=[].slice.call(document.querySelectorAll("[data-l]"));
   texEls=[].slice.call(document.querySelectorAll(".tex"));
@@ -1089,6 +1007,12 @@ function start(data){
 const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot) hot.snapshot(()=>({freq:freq,S:{found:[...found],phase:S.phase,letIn:S.letIn,returned:S.returned,youAt:S.youAt,listenMs:S.listenMs,moonMs:S.moonMs,moonSegs:S.moonSegs,noteDone:S.noteDone}}));
 if(hot&&hot.ready) hot.ready(start); else start((hot&&hot.data)||{});
+/* what the room is allowed to know about the set */
+function skipQuiet(){const st=currentSt;if(!st||st.you||st.door) return;session++;stopSpeech();runStation(st,session,true);}
+HB.radio={S:S,stats:stats,prefs:prefs,found:()=>found,LIVING:LIVING,DEAD:DEAD,LISTENER:LISTENER,get power(){return power;},get current(){return currentSt;},get freq(){return freq;},
+  redraw:()=>{drawDial();drawSky();drawEye();},deadMode:deadMode,replaced:replaced,clarity:clarity,addLine:addLine,setPower:setPower,tune:f=>animateTo(f),skipQuiet:skipQuiet,sky:skyState,measure:measure,buzz:buzz,savePrefs:savePrefs};
+/* a phone is not a mouse: no menus on a long press, and the sound comes back when you do */
+document.addEventListener("contextmenu",e=>{if(e.target.closest&&e.target.closest(".key,canvas,.obj,.door")) e.preventDefault();});
 /* for the curious: a handle on the night */
 HB.debug={state:S,stats:stats,prefs:prefs,tune:f=>setFreq(f),power:setPower,moonfall:moonfall,tap:()=>tapDial(performance.now()),call:t=>callIn(t,null),skip:skip,
   skin:(n,p)=>{skinIdx=((n%SKINS.length)+SKINS.length)%SKINS.length;stageI=0;skinT=0;newOrders();applySkin(p||0);drawDial();},away:lookedAway};

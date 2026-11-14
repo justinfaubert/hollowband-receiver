@@ -4,6 +4,8 @@
     pip install piper-tts            (and have ffmpeg on the path)
     node tools/dump_lines.js > /tmp/lines.json
     python3 tools/render_voices.py /tmp/lines.json /path/to/piper/voices
+    python3 tools/render_voices.py /tmp/lines.json /path/to/piper/voices dolores.misc,engineer.obs
+                                   (the last form re-renders only the named sprites)
 
 Writes audio/voices/*.mp3 and js/voices.js. Voice casting is in tools/cast.json.
 To use other voices (your own recordings, another TTS, Suno), produce the same
@@ -15,8 +17,13 @@ from piper import PiperVoice, SynthesisConfig
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR, GAP = 22050, 0.3
 
-def main(lines_path, voices_dir):
+def main(lines_path, voices_dir, only=None):
     lines = json.load(open(lines_path))
+    manifest = {}
+    if only:
+        lines = [ln for ln in lines if ln["sprite"] in only]
+        old = open(os.path.join(ROOT, "js", "voices.js")).read()
+        manifest = json.loads(old[old.index("{"):old.rindex("}") + 1])["sprites"]
     cast = json.load(open(os.path.join(ROOT, "tools", "cast.json")))
     out_dir = os.path.join(ROOT, "audio", "voices")
     os.makedirs(out_dir, exist_ok=True)
@@ -46,7 +53,6 @@ def main(lines_path, voices_dir):
         clips.setdefault(ln["sprite"], []).append((ln["key"], wav))
         if n % 25 == 0:
             print("%d/%d %s" % (n, len(lines), ln["sprite"]), flush=True)
-    manifest = {}
     for sprite, items in sorted(clips.items()):
         joined = os.path.join(tmp, "joined.wav")
         table, t = {}, 0.0
@@ -69,4 +75,4 @@ def main(lines_path, voices_dir):
     print("done: %d sprites, %.1f MB" % (len(manifest), total / 1e6), flush=True)
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], set(sys.argv[3].split(",")) if len(sys.argv) > 3 else None)

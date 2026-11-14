@@ -55,8 +55,8 @@ body{background:#05070c;color:var(--engrave);font-family:var(--font-label);displ
 
 .plate{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .brand{display:flex;flex-direction:column;line-height:1;min-width:0;overflow:hidden;flex:1}
-.maker{font-size:calc(25px*var(--fs));font-weight:700;letter-spacing:calc(var(--ls)*.9);color:var(--maker);white-space:nowrap;text-shadow:0 1px 0 rgba(0,0,0,.5),0 -1px 0 rgba(255,255,255,.08)}
-.model{font-size:calc(15px*var(--fs));font-weight:500;letter-spacing:var(--ls);text-transform:uppercase;opacity:.75;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.maker{font-size:calc(22px*var(--fs));font-weight:700;letter-spacing:calc(var(--ls)*.8);color:var(--maker);white-space:nowrap;text-shadow:0 1px 0 rgba(0,0,0,.5),0 -1px 0 rgba(255,255,255,.08)}
+.model{font-size:calc(13px*var(--fs));font-weight:500;letter-spacing:var(--ls);text-transform:uppercase;opacity:.75;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- keys: they breathe, lean toward a hand, and are slow to let go ---------- */
 button{font-family:inherit;color:var(--engrave);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
