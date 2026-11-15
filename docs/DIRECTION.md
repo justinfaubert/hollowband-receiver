@@ -43,6 +43,12 @@ at the set when the thing on 16,661 is speaking. If you let him in she goes unde
 Pruitt's note says: *if the engineer up the mast asks you for anything, ask Formal first.* That is the rule of the
 piece, told a fourth way.
 
+**Pruitt's desk.** The top drawer: a torch, two valves in newspaper, and his list of things the owls might want
+(number three is *to be let in*; Dolores says never). The middle drawer: Formal's grain. *One scoop. She will say
+two.* Feed her and she comes over, eats, and says two. The bottom drawer is stuck. It opens from the other side,
+on the other band, and holds a photograph of Pruitt at the desk with Formal on the night the engineer came down.
+Someone tall is in the window glass behind him. On the back: *Nobody took this.*
+
 **Him.** Once he is in, the room has two occupants and you can only ever see one. His coat is on the hook. With the
 lamp on, he is in the window glass. The owls are gone. There is a hum at nearly the room's own pitch.
 

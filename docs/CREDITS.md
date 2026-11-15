@@ -24,4 +24,7 @@ Rendered with [Piper](https://github.com/rhasspy/piper) voices. Replace them fre
 
 ## Typefaces
 
-Loaded from Google Fonts at run time, each under its own open licence.
+Bundled in `fonts/` from the [Fontsource](https://fontsource.org) packages, all under the
+[SIL Open Font License 1.1](https://openfontlicense.org): Saira Extra Condensed, Courier Prime, IM Fell English SC,
+Megrim, PT Sans Narrow, Alfa Slab One, Caveat, Cinzel, Monoton, Pacifico, Poiret One, Reenie Beanie, Rye and
+UnifrakturCook. Each family's copyright belongs to its designers; see the family pages on Google Fonts.

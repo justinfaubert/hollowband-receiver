@@ -66,20 +66,20 @@ roads:{cls:"c-roads",name:"Roads of the Empire",
   '<div class="k3">ALL ROADS LEAD HERE</div></div>';},
  back:function(){return rear({msg:"<small>QSL &middot; confirming your reception</small>4,476 kHz, in the evening, as always.<br>Delivered by the usual road. It took the usual time.",stamp:["I","AS","#6b675d"],post:["AB VRBE","CONDITA","MMDCCLXXIX"]});}},
 library:{cls:"c-library",name:"The Great Library",
- front:function(){return '<div class="c-library"><div class="k1">THE GREAT LIBRARY</div><div class="k2">OVERDUE DESK</div><div class="f">8300</div><div class="k3">This card is also overdue.</div></div>';},
+ front:function(){return '<div class="c-library"><div class="k1">THE GREAT<br>LIBRARY</div><div class="k2">OVERDUE DESK</div><div class="f">8300</div><div class="k3">This card is also overdue.</div></div>';},
  back:function(){return rear({msg:"<small>QSL &middot; confirming your reception</small>We have filed your report under Warnings. Please return this card within XIV days.",stamp:["1","OBOL","#3d2c12"],post:["RETURNS","DESK","OVERDUE"]});}},
 porch:{cls:"c-porch",name:"The Painted Porch",
- front:function(){return '<div class="c-porch"><div class="cols"></div><div class="k1">THE PAINTED PORCH</div><div class="f">12 529</div><div class="k3">The discussion continues.</div></div>';},
+ front:function(){return '<div class="c-porch"><div class="cols"></div><div class="k1">THE PAINTED<br>PORCH</div><div class="f">12 529</div><div class="k3">The discussion continues.</div></div>';},
  back:function(){return rear({msg:"<small>QSL &middot; confirming your reception</small>We had not expected to be heard. Do not make a habit of the dark side of the dial.<br>Come again.",stamp:["&Phi;","NO HANDS","#b5552f"],post:["THE PORCH","THIS HOUR","AGAIN"]});}},
 dominion:{cls:"c-dominion",name:"Not yet",
- front:function(){return '<div class="c-dominion"><div class="k1">THE TIDELESS DOMINION</div><div class="f">14 040 &middot; NOT YET</div></div>';},
+ front:function(){return '<div class="c-dominion"><div class="k1">THE TIDELESS<br>DOMINION</div><div class="f">14 040 &middot; NOT YET</div></div>';},
  back:function(){return rear({msg:"<small>QSL &middot; confirming your reception</small>Thank you for a report you have not yet sent.",stamp:["0","TIDES","#b9b4a6"],post:["NOT YET","FOUNDED","&nbsp;"]});}},
 /* letters */
 notice:{cls:"c-notice",name:"Notice of relief",
  front:function(i){return '<div class="c-notice"><b>NOTICE OF RELIEF</b>The previous occupant of the Top Room, 9 Lantern Row, was relieved at about '+i.time+', on a day we are still establishing.<br><br>You are the relief.<br><br>Your own relief is expected in the spring.<br><br>&mdash; Bureau of Approximate Time, Postings</div>';},
  back:function(i){return rear({typed:true,msg:"<small>On approximate service</small>If undelivered, deliver later.",stamp:["~","ABOUT","#243a2c"],post:["BUREAU","POSTINGS",i.date]});}},
 overdue:{cls:"c-overdue",name:"Overdue",
- front:function(){return '<div class="c-overdue"><b>Little Wending Lending Library</b>Mr A. Pruitt. The following is <u>OVERDUE</u>.<br><br>&ldquo;What the Owls Want&rdquo;, in two volumes, the second uncut.<br><br>The fine is one obol a day, and the days have continued.<br><br>If Mr Pruitt is no longer at this address, would the goose please return them.</div>';},
+ front:function(){return '<div class="c-overdue"><b>Little Wending Lending Library</b>Mr A. Pruitt. The following is <u>OVERDUE</u>:<br>&ldquo;What the Owls Want&rdquo;, in two volumes, the second uncut.<br><br>The fine is one obol a day, and the days have continued.<br><br>If Mr Pruitt is no longer at this address, would the goose please return them.</div>';},
  back:function(i){return rear({typed:true,addr:["Mr A. Pruitt","Top Room","9 Lantern Row","Cape Regret"],msg:"<small>Second notice</small>The first was returned by the goose.",stamp:["2d","WENDING","#231c16"],post:["LITTLE","WENDING",i.date]});}},
 pruitt:{cls:"c-pruitt",name:"Greetings from",
  front:function(){return '<div class="c-pruitt"><div class="moon"></div><div class="land"></div><div class="k1">Greetings from <s>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</s></div></div>';},
@@ -99,6 +99,35 @@ return {
   "A. Pruitt",
   "P.S. If the engineer up the mast asks you for anything, ask Formal first."
  ],
+ /* top drawer */
+ owls:[
+  "Things the owls might want",
+  "1. Mice. (No. They have mice.)",
+  "2. The moon. (Ditto.)",
+  "3. To be let in. (Asked Dolores. She says never, under any circumstances.)",
+  "4. Somebody to be up as late as they are.",
+  "5. For me to stop asking."
+ ],
+ /* bottom drawer. It only opens from the other side. */
+ things:{
+  photo:{
+   front:function(){return '<div class="c-photo"><svg viewBox="0 0 300 200" preserveAspectRatio="none" aria-label="A photograph of this room">'+
+    '<defs><radialGradient id="ph-v" cx="50%" cy="45%" r="75%"><stop offset="55%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".62"/></radialGradient>'+
+    '<radialGradient id="ph-l" cx="16%" cy="60%" r="42%"><stop offset="0" stop-color="#fff6dc" stop-opacity=".8"/><stop offset="1" stop-color="#fff6dc" stop-opacity="0"/></radialGradient>'+
+    '<filter id="ph-b"><feGaussianBlur stdDeviation="1.6"/></filter>'+
+    '<filter id="ph-g" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .2  0 0 0 0 .15  0 0 0 0 .1  0 0 0 .55 0"/></filter></defs>'+
+    '<rect width="300" height="200" fill="#a88a63"/>'+
+    '<rect x="232" y="8" width="62" height="160" fill="#8f7754"/><circle cx="240" cy="96" r="3" fill="#d8c08a"/>'+
+    '<rect x="30" y="12" width="156" height="94" fill="#e6d6b2"/><path d="M108,12V106M30,59H186" stroke="#5a4532" stroke-width="4"/>'+
+    '<path d="M150,106 L151,60 C150,49 156,44 163,44 C170,44 175,49 174,60 L176,106 Z" fill="#3e2f22" opacity=".55" filter="url(#ph-b)"/>'+
+    '<rect x="0" y="122" width="214" height="9" fill="#5a4030"/><rect x="6" y="131" width="42" height="69" fill="#4a3426"/><rect x="152" y="131" width="58" height="69" fill="#4a3426"/>'+
+    '<path d="M86,124 C86,104 96,98 110,98 C124,98 134,104 134,124 Z" fill="#2b2018"/><circle cx="110" cy="88" r="10.5" fill="#2b2018"/>'+
+    '<path d="M22,121 L14,98 L34,84" fill="none" stroke="#2f241b" stroke-width="3"/><path d="M30,78 L44,82 L48,96 L30,92 Z" fill="#2f241b"/>'+
+    '<path d="M218,186 C214,170 230,164 246,168 C258,171 262,182 254,188 C244,194 224,194 218,186 Z" fill="#f0e7d4"/><path d="M246,170 C246,160 249,152 251,146" stroke="#f0e7d4" stroke-width="5" stroke-linecap="round" fill="none"/><circle cx="252" cy="144" r="4.5" fill="#f0e7d4"/><path d="M256,143 L263,145 L256,147 Z" fill="#c9a26a"/>'+
+    '<rect width="300" height="200" fill="url(#ph-l)"/><rect width="300" height="200" filter="url(#ph-g)"/><rect width="300" height="200" fill="url(#ph-v)"/></svg></div>';},
+   back:function(){return '<div class="msg" style="width:auto;right:6%;border:0;font-size:calc(var(--u)*5.4)">Formal and me, the night the engineer came down off the mast.<br><br>Nobody took this.<br><br>&mdash; A.P.</div>';}
+  }
+ },
  /* the last page before yours */
  pruittLog:[
   "4,890. The Clerk again. Sent her a card to say thank you. No reply. (She did say.)",

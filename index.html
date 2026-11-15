@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#05070c">
 <title>Hollowband Receiver</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Caveat:wght@500;700&family=Cinzel:wght@600&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=IM+Fell+English+SC&family=Megrim&family=Monoton&family=PT+Sans+Narrow:wght@700&family=Pacifico&family=Poiret+One&family=Reenie+Beanie&family=Rye&family=Saira+Extra+Condensed:wght@500;600;700&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/saira-extra-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/courier-prime-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2327312e'/%3E%3Crect x='5' y='9' width='22' height='10' rx='2' fill='%23f3e2b3'/%3E%3Crect x='15.5' y='8' width='1.6' height='12' fill='%23d9442c'/%3E%3Ccircle cx='9' cy='24' r='1.8' fill='%23ffb648'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/radio.css">
 <link rel="stylesheet" href="css/room.css">
 </head>
 <body>
+<canvas id="ambient" aria-hidden="true"></canvas>
 <main class="app" id="app" data-view="room">
 
   <!-- ================= the room ================= -->
@@ -41,6 +42,7 @@
         <path class="hand sh" d="M50,60V14" stroke="#b3311f" stroke-width="1.4" stroke-linecap="round"/>
         <circle cx="50" cy="50" r="3.4" fill="#1c1c1c"/>
       </svg>
+      <button class="obj clocktap" id="clocktap" aria-label="The clock"></button>
 
       <button class="obj tides" id="tides" aria-label="Tide tables, pinned over the door"></button>
       <div class="door" id="door">
@@ -57,7 +59,7 @@
       <div class="mat"></div>
       <button class="obj mail" id="mail" aria-label="Something on the mat" hidden><i></i></button>
 
-      <div class="desk"><span class="dtop"></span><span class="dleft"></span><span class="dright"><i></i><i></i><i></i></span></div>
+      <div class="desk"><span class="dtop"></span><span class="dleft"></span><span class="dright"><button class="drw" id="dr1" aria-label="The top drawer"></button><button class="drw" id="dr2" aria-label="The middle drawer"></button><button class="drw" id="dr3" aria-label="The bottom drawer"></button></span></div>
 
       <button class="obj lamp" id="lamp" aria-label="The lamp" aria-pressed="true">
         <svg viewBox="0 0 100 150" preserveAspectRatio="xMinYMax meet" aria-hidden="true">
@@ -104,6 +106,7 @@
       <svg class="patch" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
         <path d="M22,2 L58,2 L44,16 L4,16 Z M62,2 L98,2 L88,16 L48,16 Z M2,19 L42,19 L28,33 L-14,33 Z M46,19 L86,19 L76,33 L32,33 Z" fill="#b4c8ff"/>
       </svg>
+      <span class="grainpile" id="grainpile" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <button class="obj goose" id="goose" data-pose="sleep" aria-label="Formal, the goose">
         <svg viewBox="0 0 200 190" preserveAspectRatio="xMinYMax meet" aria-hidden="true">
           <ellipse class="g-shadow" cx="90" cy="184" rx="62" ry="5"/>

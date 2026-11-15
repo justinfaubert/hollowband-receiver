@@ -86,9 +86,9 @@ const rain=sec=>{W.rainUntil=now()+sec*1000;};
 const fog=sec=>{W.fogUntil=now()+sec*1000;};
 
 /* ================= Formal ================= */
-const G={el:$("goose"),eyes:$("eyes"),where:"bed",pose:"sleep",busy:0,hold:0,moonUntil:0,stir:0,x:1};
-const SPOT={bed:1,mid:25,door:41,desk:12};
-function pose(p,holdMs){G.pose=p;G.el.dataset.pose=p;if(holdMs) G.hold=now()+holdMs;}
+const G={el:$("goose"),eyes:$("eyes"),where:"bed",pose:"sleep",busy:0,hold:0,moonUntil:0,feedUntil:0,stir:0,x:1};
+const SPOT={bed:1,mid:25,door:41,desk:12,feed:2};
+function pose(p,holdMs){G.pose=p;G.el.dataset.pose=p;G.el.classList.toggle("peck",p==="peck");if(holdMs) G.hold=now()+holdMs;}
 function honk(v,p){
   if(G.where==="under") return;
   G.el.classList.add("honk");A.room.honk(v,p);later(()=>G.el.classList.remove("honk"),380);
@@ -98,6 +98,7 @@ function want(){
   if(RD.deadMode()) return {where:"bed",pose:"sit",front:true};
   if(S.letIn) return {where:"under"};
   if(RD.replaced()&&cur&&cur.listener) return {where:"mid",pose:"hiss"};
+  if(t<G.feedUntil) return {where:"feed",pose:"peck"};
   if(t<G.moonUntil) return {where:"mid",pose:"up"};
   if(R.mat.length) return {where:"door",pose:"peer"};
   if(RD.power) return {where:"bed",pose:cur?"listen":"sit"};
@@ -132,15 +133,26 @@ function gooseTick(){
   if(t>G.hold&&w.pose&&w.pose!==G.pose){pose(w.pose);G.el.classList.toggle("front",!!w.front);}
   else if(t>G.hold&&!w.front&&(G.pose==="sit"||G.pose==="listen")&&Math.random()<0.004) pose("preen",1800+Math.random()*1400);
   if(G.pose==="hiss"&&HB.view==="room"&&Math.random()<0.02) A.room.hiss();
+  if(G.pose==="peck"&&G.where==="feed"&&HB.view==="room"&&Math.random()<0.25) A.room.peck();
 }
 G.el.addEventListener("click",()=>{
   used("goose");G.stir=now();RD.buzz(8);
   if(G.pose==="hiss"){A.room.hiss();caption("(she is not taking her eyes off the set)","cue");return;}
   if(now()<G.busy) return;
   A.room.murmur();
+  const line=formalLine();if(line) caption(line,"cue",3600);
   if(G.pose==="sleep") pose("sit",4000);
   else{G.el.classList.add("front");G.hold=now()+1800;later(()=>{if(!RD.deadMode()) G.el.classList.remove("front");},1700);}
 });
+/* she came with the room. Pruitt: "Don't call her Ordinary, she can tell." */
+function formalLine(){
+  const S=RD.S, n=(G.pats=(G.pats||0)+1), any=a=>a[Math.floor(Math.random()*a.length)];
+  if(RD.deadMode()) return "(she looks straight at you. She has never done that before.)";
+  if(S.phase>=2&&!S.returned) return any(["(she is watching the door)","(she will not settle)","(she leans against your leg, and keeps her eyes on the set)"]);
+  if(S.phase>=1&&!S.returned) return "(she keeps looking at the window)";
+  if(n===1) return G.pose==="sleep"?"(she wakes, and looks at you as though you owe her something)":"(Formal regards you, then the set, then you again)";
+  return n%3===0?any(["(she would like it known that she was here first)","(she is not Ordinary, and she can tell when you think it)","(she allows it)"]):null;
+}
 G.eyes.addEventListener("click",()=>{caption("(she will not come out)","cue");});
 
 /* ================= the kettle ================= */
@@ -155,6 +167,8 @@ function boil(){
   const cur=RD.current;let m=cur&&cur.scale?cur.scale[0]:69;
   while(m<79) m+=12;
   A.room.kettle.whistle(m);kettleSet("whistling");R.boiled=true;saveR();
+  later(()=>{if(kettle==="whistling"&&G.where!=="under") honk(0.7,1.12);},6000);
+  kT=later(()=>{if(kettle==="whistling"){A.room.kettle.stop();kettleSet("hot");caption("(the kettle gives up on you)","cue");kT=later(()=>kettleSet("cold"),180000);}},30000);
   /* "Next bulletin at six, or when the kettle has boiled, whichever is later." */
   if(cur&&cur.id==="coast") RD.skipQuiet();
   if(G.where!=="under"&&G.pose==="sleep") pose("sit",5000);
@@ -165,6 +179,46 @@ $("kettle").addEventListener("click",()=>{
   else if(kettle==="heating"){A.room.kettle.stop(true);kettleSet("cold");}
   else if(kettle==="whistling"){A.room.kettle.stop();kettleSet("hot");kT=later(()=>kettleSet("cold"),180000);}
   else caption("(still warm)","cue");
+});
+
+/* ================= Pruitt's desk ================= */
+function drawer(id,ms){const el=$(id);el.classList.add("open");A.room.drawer(true);later(()=>{el.classList.remove("open");A.room.drawer(false);},ms||1800);}
+$("dr1").addEventListener("click",()=>{
+  used("dr1");drawer("dr1",2400);
+  if(RD.deadMode()){caption("(the drawer is empty. It is very clean.)","cue ghost");return;}
+  caption("(a torch, two valves wrapped in newspaper, and a list in Pruitt's hand)","cue",4200);
+  const p=document.createElement("div");p.className="paper";
+  CD.owls.forEach((l,i)=>{const e=document.createElement("p");if(i===0) e.className="ttl";e.textContent=l;p.appendChild(e);});
+  later(()=>{openViewer(p,[key("Put it back",closeViewer)]);A.room.flip();},450);
+});
+$("dr2").addEventListener("click",()=>{used("dr2");drawer("dr2",2600);feed();});
+$("dr3").addEventListener("click",()=>{
+  used("dr3");
+  if(!RD.deadMode()){A.room.rattle();RD.buzz([10,40,10]);caption("(the bottom drawer is stuck)","cue");return;}
+  drawer("dr3",2800);later(()=>openThing(CD.things.photo),450);
+});
+/* "One scoop. She will say two." */
+function feed(){
+  const t=now();
+  if(RD.deadMode()){caption("(a tin of grain. It is full. It has always been full.)","cue ghost");return;}
+  const first=!R.tinSeen;R.tinSeen=1;saveR();
+  const say=(s)=>later(()=>caption(s,"cue",3600),first?5000:0);
+  if(first) caption("(a tin of grain. On the lid, in Pruitt's hand: FORMAL. ONE SCOOP. SHE WILL SAY TWO.)","cue",4800);
+  if(G.where==="under"){say("(she will not come out. Not even for this.)");return;}
+  if(G.pose==="hiss"){say("(she will not take her eyes off the set)");return;}
+  if(t-(R.fed||0)<240000){say("(she has had hers. She would like yours.)");later(()=>honk(0.5,1.1),first?5200:300);return;}
+  R.fed=t;R.feeds=(R.feeds||0)+1;saveR();
+  A.room.grain();show($("grainpile"),true);
+  G.feedUntil=t+9500;G.busy=0;G.stir=t;
+  later(()=>{if(G.where==="feed"){honk(0.8,1);later(()=>honk(0.8,1.06),420);later(()=>caption("(two)","cue",2600),900);}},8400);
+  later(()=>show($("grainpile"),false),26000);
+}
+$("clocktap").addEventListener("click",()=>{
+  used("clocktap");
+  const d=new Date();
+  if(RD.deadMode()) caption("(the clock is going the other way. It seems happier.)","cue ghost");
+  else if(HB.mood()==="wrong") caption("(the clock says "+clockStr()+". It said that a moment ago, as well.)","cue",4400);
+  else caption("(the clock says "+clockStr()+". The Bureau would call it about "+D.timeWords(d.getHours(),d.getMinutes())+".)","cue",4400);
 });
 
 /* ================= the door, and what comes through it ================= */
@@ -281,19 +335,26 @@ function closeViewer(){
 }
 viewer.addEventListener("click",e=>{if(e.target===viewer) closeViewer();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape") closeViewer();});
+function cardEl(front,back){
+  const q=document.createElement("div");q.className="qsl";
+  q.innerHTML='<div class="flipper"><div class="side front">'+front+'</div><div class="side rear">'+back+"</div></div>";
+  const turn=()=>{q.classList.toggle("turned");A.room.flip();};
+  q.addEventListener("click",turn);
+  return {q:q,turn:turn,size:()=>{const f=()=>q.style.setProperty("--u",(q.clientWidth/100)+"px");f();requestAnimationFrame(f);}};
+}
 function openCard(id,fresh){
   const c=CD.cards[id];
   if(!c) return;
-  const inf=fresh?info(id):(R.cards[id]&&R.cards[id].info)||info(id), q=document.createElement("div");
-  q.className="qsl";
-  q.innerHTML='<div class="flipper"><div class="side front">'+c.front(inf)+'</div><div class="side rear">'+c.back(inf)+"</div></div>";
-  const turn=()=>{q.classList.toggle("turned");A.room.flip();};
-  q.addEventListener("click",turn);
-  openViewer(q,[key("Turn it over",turn),key(fresh?"Pin it to the door":"Put it back",closeViewer)],fresh?()=>pin(id,inf):null);
-  const size=()=>q.style.setProperty("--u",(q.clientWidth/100)+"px");
-  size();requestAnimationFrame(size);
-  A.room.flip();
+  const inf=fresh?info(id):(R.cards[id]&&R.cards[id].info)||info(id), k=cardEl(c.front(inf),c.back(inf));
+  openViewer(k.q,[key("Turn it over",k.turn),key(fresh?"Pin it to the door":"Put it back",closeViewer)],fresh?()=>pin(id,inf):null);
+  k.size();A.room.flip();
 }
+function openThing(c){
+  const k=cardEl(c.front(),c.back());
+  openViewer(k.q,[key("Turn it over",k.turn),key("Put it back",closeViewer)]);
+  k.size();A.room.flip();
+}
+window.addEventListener("resize",()=>{const q=vbody.querySelector(".qsl");if(q) q.style.setProperty("--u",(q.clientWidth/100)+"px");});
 function openBrowser(){
   const ids=Object.keys(R.cards).sort((a,b)=>R.cards[a].t-R.cards[b].t);
   if(!ids.length) return;
@@ -352,7 +413,7 @@ HB.on("phase",p=>{
   if(p==="letin") A.room.hiss();
   if(p==="returned"){G.stir=now();later(()=>{honk(0.8,1.05);later(()=>honk(0.8,1.12),420);},2600);}
   if(p==="reset"){
-    R.cards={};R.mat=[];R.log=[];R.lampFailed=false;R.boiled=false;R.peeks=0;queued.clear();mailQ.length=0;
+    R.cards={};R.mat=[];R.log=[];R.lampFailed=false;R.boiled=false;R.peeks=0;R.fed=0;queued.clear();mailQ.length=0;
     renderPins();showMat();saveR();
   }
   light();
@@ -394,6 +455,13 @@ setInterval(()=>{
   }
 },100);
 
+/* ================= on a wide screen, the night spills round the room ================= */
+const amb=$("ambient"), actx=amb.getContext("2d");amb.width=48;amb.height=30;
+setInterval(()=>{
+  if(document.hidden||window.innerWidth<app.clientWidth+60) return;
+  try{actx.drawImage(HB.view==="room"?winsky:$("sky"),0,0,48,30);}catch(_){}
+},700);
+
 /* ================= begin ================= */
 Object.keys(R.used).forEach(id=>{const el=$(id);if(el) el.classList.add("used");});
 document.querySelectorAll(".obj").forEach((el,i)=>el.style.setProperty("--gd",(-i*0.9)+"s"));
@@ -403,5 +471,5 @@ later(()=>{
   caption(first?"(Top room, 9 Lantern Row. Somebody has left a note against the set.)":"(Top room, 9 Lantern Row.)","cue",5200);
 },1400);
 K.draw(winsky,RD.sky("window"));
-HB.room.debug={rain:rain,fog:fog,queue:queue,deliver:deliver,lampFails:lampFails,view:setView,goose:G,openCard:openCard,boil:boil};
+HB.room.debug={rain:rain,fog:fog,queue:queue,deliver:deliver,lampFails:lampFails,view:setView,goose:G,openCard:openCard,openThing:id=>openThing(CD.things[id]),feed:feed,boil:boil,close:closeViewer};
 })();

@@ -34,7 +34,8 @@ Enter on the dial knocks on the glass. Escape closes whatever you are reading.
 | `js/sky.js`, `js/stars.js` | The night sky: the real stars and constellations, the moon at tonight's phase, the coast |
 | `js/voices.js` | Generated: where each spoken line sits inside the voice files |
 | `audio/voices/` | Generated: the voices, one small mp3 per station segment |
-| `tools/` | Voice rendering, star data and track tools |
+| `tools/` | Voice rendering, star data, track tools, and `measure_mix.py`, which meters every station's levels in a headless browser |
+| `fonts/`, `css/fonts.css` | The typefaces, bundled (open licences; see credits) so the set works offline |
 | `docs/CREDITS.md` | Third-party data and its licences |
 | `docs/DIRECTION.md` | Director's notes: what this is about, the dream rules, the road ahead. **Spoilers** |
 

@@ -17,7 +17,7 @@ HB.emit=function(ev,a,b){(subs[ev]||[]).slice().forEach(f=>{try{f(a,b);}catch(e)
 
 const S=HB.sound={};
 let ctx=null, master, analyser, radioOut, radioLP, fx, conv, wet, NB, nbp, noiseGain, staticMix, musicMix, voiceMix, roomMix, roomBus, airBus, airLP, airGain, res=[], whistle, whistle2, whistleGain;
-let bedGain, vIn, vHP, vLP, vGain, vSend, wowDepth, bedStop=null, bedName="", winOpen=false, deadAir=false;
+let bedGain, bedTrim, vIn, vHP, vLP, vGain, vSend, wowDepth, bedStop=null, bedName="", winOpen=false, deadAir=false;
 const mix={voice:1,music:1,static:1,room:1};
 const mf=m=>440*Math.pow(2,(m-69)/12);
 const mood=()=>HB.mood?HB.mood():"normal";
@@ -60,7 +60,7 @@ S.init=function(){
   whistle.connect(whistleGain);whistle2.connect(w2);w2.connect(whistleGain);whistleGain.connect(staticMix);whistle.start();whistle2.start();
   /* music */
   musicMix=ctx.createGain();musicMix.connect(fx);
-  bedGain=ctx.createGain();bedGain.gain.value=0;bedGain.connect(musicMix);
+  bedGain=ctx.createGain();bedGain.gain.value=0;bedTrim=ctx.createGain();bedGain.connect(bedTrim);bedTrim.connect(musicMix);
   /* voices: a narrow band, a little valve warmth, a little tape wow */
   vIn=ctx.createGain();
   vHP=ctx.createBiquadFilter();vHP.type="highpass";vHP.frequency.value=280;
@@ -130,7 +130,7 @@ S.tune=function(o){
   wet.gain.setTargetAtTime(o.dead?0.9:0.22,t,0.5);
   /* voices fade a little, the way a distant signal breathes */
   fadePhase+=0.05;
-  const fade=1-(o.dead?0.3:0.14)*(0.5+0.5*Math.sin(fadePhase))*(o.inside?0:1);
+  const fade=1-(o.dead?0.2:0.14)*(0.5+0.5*Math.sin(fadePhase))*(o.inside?0:1);
   vGain.gain.setTargetAtTime((0.3+0.7*o.clarity)*fade,t,0.2);
   vHP.frequency.setTargetAtTime(o.inside?60:o.dead?200:280,t,0.3);
   vLP.frequency.setTargetAtTime(o.inside?9000:o.dead?2300:3000+600*o.clarity,t,0.3);
@@ -474,17 +474,29 @@ const BEDS={
   /* the eleventh station: yours */
   yours:()=>playYours()
 };
+/* Level trims per theme, in dB, set from tools/measure_mix.py so that every station's music is audible under its
+   voices: music-forward stations (Dolores, Lagoon, the Coast) sit about 3 dB under the speech, talk stations about 7. */
+const TRIM={coast:0,clerk:8,dolores:0,farm:1,kettle:7,bureau:6,vellish:9,parish:9,lagoon:-0.5,engineer:-3,roads:-6,library:-6,porch:-6,dominion:-6};
+S.trim=TRIM;
 S.startBed=function(st){
   if(!ctx) return;
   if(bedName===st.id) return;
   S.stopBed();
+  bedTrim.gain.setValueAtTime(Math.pow(10,(TRIM[st.id]||0)/20),ctx.currentTime);
   if(st.bed&&BEDS[st.bed]){bedStop=BEDS[st.bed](st);bedName=st.id;}
 };
 S.stopBed=function(){if(bedStop){try{bedStop();}catch(_){}bedStop=null;}bedName="";};
 
 /* ---------------- voices ---------------- */
 const cache=new Map();           /* sprite name -> AudioBuffer, a few at a time */
-const pending=new Map(), revCache=new Map();
+const pending=new Map(), revCache=new Map(), norm=new Map();
+/* Every voice file is brought to the same speech level as it loads, so voices you drop in yourself need no levelling.
+   Speech level: mean power of the 50 ms blocks above -50 dBFS. Target: -19 dBFS. */
+function speechGain(buf){
+  const d=buf.getChannelData(0), n=Math.max(2,Math.floor(buf.sampleRate*0.05));let sum=0,cnt=0;
+  for(let i=0;i+n<=d.length;i+=n){let s=0;for(let j=i;j<i+n;j+=2) s+=d[j]*d[j];s/=n/2;if(s>1e-5){sum+=s;cnt++;}}
+  return cnt?Math.max(0.25,Math.min(4,0.1122/Math.sqrt(sum/cnt))):1;
+}
 let speaking=[], speakDone=null;
 S.clip=function(sprite,key){
   const v=window.HB_VOICES&&HB_VOICES.sprites[sprite];
@@ -498,7 +510,7 @@ S.prepare=function(sprite){
   if(!v) return Promise.resolve(false);
   const p=fetch(v.file).then(r=>{if(!r.ok) throw new Error(r.status);return r.arrayBuffer();})
     .then(ab=>new Promise((res,rej)=>ctx.decodeAudioData(ab,res,rej)))
-    .then(buf=>{cache.set(sprite,buf);while(cache.size>6) cache.delete(cache.keys().next().value);pending.delete(sprite);return true;})
+    .then(buf=>{cache.set(sprite,buf);norm.set(sprite,speechGain(buf));while(cache.size>6) cache.delete(cache.keys().next().value);pending.delete(sprite);return true;})
     .catch(()=>{pending.delete(sprite);return false;});
   pending.set(sprite,p);return p;
 };
@@ -524,18 +536,19 @@ S.say=async function(partsList,o){
   if(o.dead&&first&&fb){
     const len=preLen(first,o), src=ctx.createBufferSource(), a=ctx.createGain(), lp=ctx.createBiquadFilter();
     src.buffer=reversedHead(fb,first[0]+0.03,len,partsList[0].sprite+partsList[0].key);lp.type="lowpass";lp.frequency.value=1500;
-    a.gain.setValueAtTime(0.0001,t);a.gain.exponentialRampToValueAtTime(0.55,t+len);a.gain.linearRampToValueAtTime(0.0001,t+len+0.03);
+    a.gain.setValueAtTime(0.0001,t);a.gain.exponentialRampToValueAtTime(0.55*(norm.get(partsList[0].sprite)||1),t+len);a.gain.linearRampToValueAtTime(0.0001,t+len+0.03);
     src.connect(lp);lp.connect(a);a.connect(vIn);a.connect(conv);src.start(t);speaking.push(src);
     t+=len;
   }
   for(const p of partsList){
     const c=S.clip(p.sprite,p.key), buf=cache.get(p.sprite);
     if(!c||!buf) return false;
-    const src=ctx.createBufferSource();src.buffer=buf;src.playbackRate.value=rate;wowDepth.connect(src.playbackRate);src.connect(vIn);
+    const src=ctx.createBufferSource(), ng=ctx.createGain();src.buffer=buf;src.playbackRate.value=rate;wowDepth.connect(src.playbackRate);
+    ng.gain.value=norm.get(p.sprite)||1;src.connect(ng);ng.connect(vIn);
     src.start(t,c[0],c[1]);speaking.push(src);
     if(o.double){
       /* late in the night some voices are followed, very closely, by the same voice */
-      const s2=ctx.createBufferSource(), g2=ctx.createGain();s2.buffer=buf;s2.playbackRate.value=rate*0.972;g2.gain.value=0.5;
+      const s2=ctx.createBufferSource(), g2=ctx.createGain();s2.buffer=buf;s2.playbackRate.value=rate*0.972;g2.gain.value=0.5*(norm.get(p.sprite)||1);
       s2.connect(g2);g2.connect(vIn);s2.start(t+0.11,c[0],c[1]);speaking.push(s2);
     }
     t+=(c[1]-0.08)/rate;
@@ -611,6 +624,31 @@ R.steps=function(up){
     noiseHit(at,0.07,0.22*v,"bandpass",620,doorLP,1.2);
   }
   return n*0.44;
+};
+R.grain=function(){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.02;
+  for(let i=0;i<46;i++){const at=t+Math.pow(Math.random(),0.7)*0.9;noiseHit(at,0.012,0.03+Math.random()*0.04,"bandpass",2200+Math.random()*3000,roomBus,3);}
+  noiseHit(t,0.9,0.015,"highpass",3000,roomBus);
+};
+R.peck=function(){if(!ctx) return;const t=ctx.currentTime+0.005;noiseHit(t,0.02,0.05,"bandpass",1800,roomBus,2);tone(900,t,0.02,"triangle",0.015,false,roomBus);};
+R.drawer=function(open){
+  if(!ctx) return;
+  const t=ctx.currentTime+0.01, s=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), a=ctx.createGain();
+  s.buffer=NB;s.loop=true;bp.type="bandpass";bp.Q.value=1.4;bp.frequency.setValueAtTime(open?500:800,t);bp.frequency.linearRampToValueAtTime(open?800:450,t+0.35);
+  env(a,t,[[0.05,0.05],[0.3,0.035],[0.36,0]]);
+  s.connect(bp);bp.connect(a);a.connect(roomBus);s.start(t);s.stop(t+0.4);
+  const k=t+0.34, o=ctx.createOscillator(), g=ctx.createGain();
+  o.frequency.setValueAtTime(140,k);o.frequency.exponentialRampToValueAtTime(70,k+0.08);g.gain.setValueAtTime(0.12,k);g.gain.exponentialRampToValueAtTime(0.0001,k+0.12);
+  o.connect(g);g.connect(roomBus);o.start(k);o.stop(k+0.14);
+};
+R.rattle=function(){
+  if(!ctx) return;
+  [0,0.11,0.2].forEach((d,i)=>{
+    const t=ctx.currentTime+0.01+d, o=ctx.createOscillator(), g=ctx.createGain();
+    o.frequency.setValueAtTime(160-i*10,t);o.frequency.exponentialRampToValueAtTime(80,t+0.06);g.gain.setValueAtTime(0.1,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.09);
+    o.connect(g);g.connect(roomBus);o.start(t);o.stop(t+0.1);noiseHit(t,0.03,0.03,"bandpass",1200,roomBus,2);
+  });
 };
 R.flip=function(){if(!ctx) return;noiseHit(ctx.currentTime+0.005,0.08,0.03,"highpass",2400,roomBus);};
 R.tick=function(k){if(!ctx) return;const t=ctx.currentTime+0.005;tone(k%2?1480:1240,t,0.014,"square",0.008,false,roomBus);noiseHit(t,0.012,0.008,"highpass",4000,roomBus);};
@@ -688,6 +726,15 @@ S.ambience=function(o){
   setT(amb.rain.gain,(o.rain||0)*0.07,1.5);
   amb.wind=o.wind||0;amb.sea=!!o.sea;
   if(deadAir!==!!o.dead){deadAir=!!o.dead;airNow();}
+};
+
+/* ---------------- a meter for the mix: read() gives dBFS RMS per bus. Used by tools/measure_mix.py ---------------- */
+S.meter=function(){
+  if(!ctx) return null;
+  const sink=ctx.createGain();sink.gain.value=0;sink.connect(ctx.destination);
+  const mk=node=>{const a=ctx.createAnalyser();a.fftSize=2048;node.connect(a);a.connect(sink);return a;};
+  const ans={voice:mk(voiceMix),music:mk(musicMix),static:mk(staticMix),room:mk(roomMix),air:mk(airGain),master:mk(master)}, buf=new Float32Array(2048);
+  return function(){const o={};for(const k in ans){ans[k].getFloatTimeDomainData(buf);let s=0;for(let i=0;i<buf.length;i++) s+=buf[i]*buf[i];o[k]=10*Math.log10(s/buf.length+1e-12);}return o;};
 };
 
 /* ---------------- your tracks, your microphone ---------------- */
